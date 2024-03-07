@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: kle
+Version: 0.0.0
+Summary: TODO
+Author-email: Jyrgen Luus <jyrgen.luus@gmail.com>
+License: BSD-3-Clause
+Requires-Python: >=3.8
+Description-Content-Type: text/x-rst
+Requires-Dist: klayout
