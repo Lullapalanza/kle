@@ -24,4 +24,4 @@ def get_new_layout():
     return layout
 
 if __name__ == "__main__":
-    get_new_layout().write("C:/Users/jyrgen/Desktop/test.oas")
+    get_new_layout().write("C:/Users/nbr720/Documents/test.oas")
