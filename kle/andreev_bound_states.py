@@ -21,7 +21,7 @@ LAMBDA1 = 2.25
 LAMBDA2 = 1.75
 
 # List of phi
-N_PHI = 50
+N_PHI = 100
 PHI = np.pi * np.linspace(0, 2, num=N_PHI)
 
 N_E0 = 23
@@ -57,42 +57,45 @@ def get_energies_for_p(*args):
     return np.sort(_E) # Sorted energies in ascending order
 
 
-# RUN CALC
-ENERGIES_D = [
-    [], # +1
-    [], # -1
-    [], # +2
-    [], # -2
-]
+def get_eigenenergies_of_ABS():
+    # RUN CALC
+    ENERGIES_D = [
+        [], # +1
+        [], # -1
+        [], # +2
+        [], # -2
+    ]
 
-ENERGIES_U = [
-    [], # +1
-    [], # -1
-    [], # +2
-    [], # -2
-]
+    ENERGIES_U = [
+        [], # +1
+        [], # -1
+        [], # +2
+        [], # -2
+    ]
 
-# For every phi
-for p in PHI:
-    # results for -1 sign
-    E_minus = get_energies_for_p(p, TAU, LAMBDA1, LAMBDA2, -1)
-    # Now find energy of -1 level
-    id_e1 = find_id_e1(E_minus)
+    # For every phi
+    for p in PHI:
+        # results for -1 sign
+        E_minus = get_energies_for_p(p, TAU, LAMBDA1, LAMBDA2, -1)
+        # Now find energy of -1 level
+        id_e1 = find_id_e1(E_minus)
 
-    ENERGIES_D[0].append(E_minus[id_e1])
-    ENERGIES_D[1].append(E_minus[id_e1-1])
-    ENERGIES_D[2].append(E_minus[id_e1+1] if id_e1+1 < len(E_minus) else np.nan)
-    ENERGIES_D[3].append(E_minus[id_e1-2] if id_e1-2 >= 0 else np.nan)
+        ENERGIES_D[0].append(E_minus[id_e1])
+        ENERGIES_D[1].append(E_minus[id_e1-1])
+        ENERGIES_D[2].append(E_minus[id_e1+1] if id_e1+1 < len(E_minus) else np.nan)
+        ENERGIES_D[3].append(E_minus[id_e1-2] if id_e1-2 >= 0 else np.nan)
 
-    E_plus = get_energies_for_p(p, TAU, LAMBDA1, LAMBDA2, 1)
-    # Now find energy of -1 level
-    id_e1 = find_id_e1(E_plus)
+        E_plus = get_energies_for_p(p, TAU, LAMBDA1, LAMBDA2, 1)
+        # Now find energy of -1 level
+        id_e1 = find_id_e1(E_plus)
 
-    ENERGIES_U[0].append(E_plus[id_e1])
-    ENERGIES_U[1].append(E_plus[id_e1-1])
-    ENERGIES_U[2].append(E_plus[id_e1+1] if id_e1+1 < len(E_plus) else np.nan)
-    ENERGIES_U[3].append(E_plus[id_e1-2] if id_e1-2 >= 0 else np.nan)
+        ENERGIES_U[0].append(E_plus[id_e1])
+        ENERGIES_U[1].append(E_plus[id_e1-1])
+        ENERGIES_U[2].append(E_plus[id_e1+1] if id_e1+1 < len(E_plus) else np.nan)
+        ENERGIES_U[3].append(E_plus[id_e1-2] if id_e1-2 >= 0 else np.nan)
+    return ENERGIES_D, ENERGIES_U
 
+ENERGIES_D, ENERGIES_U = get_eigenenergies_of_ABS()
 
 for i, (ed, eu) in enumerate(zip(ENERGIES_D, ENERGIES_U)):
     if i == 0:
@@ -108,9 +111,12 @@ plt.legend(
     bbox_to_anchor=(1, 1),
     title=r"$\tau =" + f"{TAU}" + r"$" + "\n" + r"$\lambda_1=" + f"{LAMBDA1}" + r"$" + "\n" + r"$\lambda_2=" + f"{LAMBDA2}" + r"$" 
 )
+
 plt.xlim(0, 2 * np.pi)
 plt.axhline(-1, ls="--", color="gray")
 plt.axhline(1, ls="--", color="gray")
 plt.tight_layout()
+
+
 plt.show()
         
