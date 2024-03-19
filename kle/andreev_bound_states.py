@@ -16,13 +16,18 @@ def equation_B12(epsilon, phi, tau, lambda1, lambda2, sign: int):
     )
 
 
-TAU = 0.95
+TAU = 0.9999
 LAMBDA1 = 2.25
-LAMBDA2 = 1.75
+LAMBDA2 = 2.75
+# SHort
+# LAMBDA1 = 0.2
+# LAMBDA2 = 0.01
 
 # List of phi
-N_PHI = 100
+N_PHI = 401
 PHI = np.pi * np.linspace(0, 2, num=N_PHI)
+# PHI = np.linspace(2.915, 3.365, num=N_PHI)
+
 
 N_E0 = 23
 E0s = np.linspace(-1, 1.1, num=N_E0)
@@ -95,28 +100,32 @@ def get_eigenenergies_of_ABS():
         ENERGIES_U[3].append(E_plus[id_e1-2] if id_e1-2 >= 0 else np.nan)
     return ENERGIES_D, ENERGIES_U
 
-ENERGIES_D, ENERGIES_U = get_eigenenergies_of_ABS()
 
-for i, (ed, eu) in enumerate(zip(ENERGIES_D, ENERGIES_U)):
-    if i == 0:
-        plt.plot(PHI, ed, color="blue", label="d")
-        plt.plot(PHI, eu, color="red", label="u", ls="--")
-    else:
-        plt.plot(PHI, ed, color="blue")
-        plt.plot(PHI, eu, color="red", ls="--")
+if __name__ == "__main__":
+    ENERGIES_D, ENERGIES_U = get_eigenenergies_of_ABS()
 
-plt.ylabel(r"$\epsilon / \Delta$")
-plt.xlabel(r"$\phi$")
-plt.legend(
-    bbox_to_anchor=(1, 1),
-    title=r"$\tau =" + f"{TAU}" + r"$" + "\n" + r"$\lambda_1=" + f"{LAMBDA1}" + r"$" + "\n" + r"$\lambda_2=" + f"{LAMBDA2}" + r"$" 
-)
+    for i, (ed, eu) in enumerate(zip(ENERGIES_D, ENERGIES_U)):
+        if i == 0:
+            plt.plot(PHI, ed, color="blue", label="d")
+            plt.plot(PHI, eu, color="red", label="u", ls="--")
+        else:
+            plt.plot(PHI, ed, color="blue")
+            plt.plot(PHI, eu, color="red", ls="--")
 
-plt.xlim(0, 2 * np.pi)
-plt.axhline(-1, ls="--", color="gray")
-plt.axhline(1, ls="--", color="gray")
-plt.tight_layout()
+    plt.ylabel(r"$\epsilon / \Delta$")
+    plt.xlabel(r"$\phi$")
+    plt.legend(
+        bbox_to_anchor=(1, 1),
+        title=r"$\tau =" + f"{TAU}" + r"$" + "\n" + r"$\lambda_1=" + f"{LAMBDA1}" + r"$" + "\n" + r"$\lambda_2=" + f"{LAMBDA2}" + r"$" 
+    )
 
+    plt.axhline(-1, ls="--", color="gray")
+    plt.axhline(1, ls="--", color="gray")
 
-plt.show()
-        
+    # plt.xlim(0, 2 * np.pi)
+    plt.ylim(-0.35, 0.35)
+    plt.xlim(1.5, 2 * np.pi - 1.5)
+    plt.tight_layout()
+
+    plt.show()
+            
