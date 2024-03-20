@@ -13,7 +13,7 @@ def labeled_current_ABS(epsilon, phi, l, lambda_sum, lambda_diff, p, sigma):
 
 
 LAMBDA_SUM = 0.5
-LAMBDA_DIFF = 0.45
+LAMBDA_DIFF = 0.3
 
 # List of phi
 N_PHI = 401
@@ -83,16 +83,22 @@ def get_labeled_s_eigenenergies_of_ABS():
 
 
     def scattering(epsilon_0, epsilon_1, var_tau):
-        T = 1 / (
+        T0 = 1 / (
             (1-epsilon_0**2) * (2/var_tau - 1)**2 + epsilon_0**2
         )
-        R = 1 - T
-        print(T, R)
+        T1 = 1 / (
+            (1-epsilon_1**2) * (2/var_tau - 1)**2 + epsilon_1**2
+        )
+        print(T0, T1)
+        
+        R0 = 1 - T0
+        R1 = 1 - T1
+        
         H_scattering = np.array([
-            [epsilon_0, R],
-            [R, epsilon_1]
+            [epsilon_0, R1],
+            [R0, epsilon_1]
         ])
-
+        print(H_scattering)
         eigvals, _ = np.linalg.eig(H_scattering)
         eigvals = np.sort(eigvals)
         
@@ -113,35 +119,37 @@ def get_labeled_s_eigenenergies_of_ABS():
     
     return scattered_E011, scattered_E01m1, scattered_E0m11, scattered_E0m1m1
 
-# plt.plot(PHI, E_011, label="011")
-# plt.plot(PHI, E_01m1, label="01m1")
-# plt.plot(PHI, E_0m11, label="0m11")
-# plt.plot(PHI, E_0m1m1, label="0m1m1")
+if __name__ == "__main__":
+    # plt.plot(PHI, E_011, label="011")
+    # plt.plot(PHI, E_01m1, label="01m1")
+    # plt.plot(PHI, E_0m11, label="0m11")
+    # plt.plot(PHI, E_0m1m1, label="0m1m1")
+    scattered_E011, scattered_E01m1, scattered_E0m11, scattered_E0m1m1 = get_labeled_s_eigenenergies_of_ABS()
 
-# plt.plot(PHI, scattered_E011, label="up")
-# plt.plot(PHI, scattered_E0m11, label="up")
-# plt.plot(PHI, scattered_E01m1, label="down")
-# plt.plot(PHI, scattered_E0m1m1, label="down")
+    plt.plot(PHI, scattered_E011, label="up")
+    plt.plot(PHI, scattered_E0m11, label="up")
+    plt.plot(PHI, scattered_E01m1, label="down")
+    plt.plot(PHI, scattered_E0m1m1, label="down")
 
 
-# plt.axhline(-1 * DELTA, ls="--", color="gray")
-# plt.axhline(1 * DELTA, ls="--", color="gray")
+    plt.axhline(-1 * DELTA, ls="--", color="gray")
+    plt.axhline(1 * DELTA, ls="--", color="gray")
 
-# ENERGIES_D, ENERGIES_U = get_eigenenergies_of_ABS(tau)
-# for i, (ed, eu) in enumerate(zip(ENERGIES_D, ENERGIES_U)):
-#     if i == 0:
-#         plt.plot(PHI, np.array(ed) * DELTA, color="blue", label="d", ls="--")
-#         plt.plot(PHI, np.array(eu) * DELTA, color="red", label="u", ls="--")
-#     else:
-#         plt.plot(PHI, np.array(ed) * DELTA, color="blue", ls="--")
-#         plt.plot(PHI, np.array(eu) * DELTA, color="red", ls="--")
+    ENERGIES_D, ENERGIES_U = get_eigenenergies_of_ABS(tau)
+    for i, (ed, eu) in enumerate(zip(ENERGIES_D, ENERGIES_U)):
+        if i == 0:
+            plt.plot(PHI, np.array(ed) * DELTA, color="blue", label="d", ls="--")
+            plt.plot(PHI, np.array(eu) * DELTA, color="red", label="u", ls="--")
+        else:
+            plt.plot(PHI, np.array(ed) * DELTA, color="blue", ls="--")
+            plt.plot(PHI, np.array(eu) * DELTA, color="red", ls="--")
 
-# plt.ylabel(r"$\epsilon / \Delta$")
-# plt.xlabel(r"$\phi$")
-# plt.legend(
-#     bbox_to_anchor=(1, 1),
-#     title=r"$\tau =" + f"{tau}" + r"$" + "\n" + r"$\lambda_1=" + f"{0.4}" + r"$" + "\n" + r"$\lambda_2=" + f"{0.1}" + r"$" 
-# )
-# plt.xlim(0, 2 * np.pi)
-# plt.tight_layout()
-# plt.show()
+    plt.ylabel(r"$\epsilon / \Delta$")
+    plt.xlabel(r"$\phi$")
+    plt.legend(
+        bbox_to_anchor=(1, 1),
+        title=r"$\tau =" + f"{tau}" + r"$" + "\n" + r"$\lambda_1=" + f"{0.4}" + r"$" + "\n" + r"$\lambda_2=" + f"{0.1}" + r"$" 
+    )
+    plt.xlim(0, 2 * np.pi)
+    plt.tight_layout()
+    plt.show()
