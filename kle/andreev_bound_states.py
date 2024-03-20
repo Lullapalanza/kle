@@ -16,9 +16,9 @@ def equation_B12(epsilon, phi, tau, lambda1, lambda2, sign: int):
     )
 
 
-TAU = 0.9999
-LAMBDA1 = 2.25
-LAMBDA2 = 2.75
+TAU = 0.8
+LAMBDA1 = 0.4
+LAMBDA2 = 0.1
 # SHort
 # LAMBDA1 = 0.2
 # LAMBDA2 = 0.01
@@ -27,6 +27,7 @@ LAMBDA2 = 2.75
 N_PHI = 401
 PHI = np.pi * np.linspace(0, 2, num=N_PHI)
 # PHI = np.linspace(2.915, 3.365, num=N_PHI)
+# PHI = np.pi * np.array([1])
 
 
 N_E0 = 23
@@ -62,7 +63,7 @@ def get_energies_for_p(*args):
     return np.sort(_E) # Sorted energies in ascending order
 
 
-def get_eigenenergies_of_ABS():
+def get_eigenenergies_of_ABS(tau):
     # RUN CALC
     ENERGIES_D = [
         [], # +1
@@ -81,7 +82,7 @@ def get_eigenenergies_of_ABS():
     # For every phi
     for p in PHI:
         # results for -1 sign
-        E_minus = get_energies_for_p(p, TAU, LAMBDA1, LAMBDA2, -1)
+        E_minus = get_energies_for_p(p, tau, LAMBDA1, LAMBDA2, -1)
         # Now find energy of -1 level
         id_e1 = find_id_e1(E_minus)
 
@@ -90,7 +91,7 @@ def get_eigenenergies_of_ABS():
         ENERGIES_D[2].append(E_minus[id_e1+1] if id_e1+1 < len(E_minus) else np.nan)
         ENERGIES_D[3].append(E_minus[id_e1-2] if id_e1-2 >= 0 else np.nan)
 
-        E_plus = get_energies_for_p(p, TAU, LAMBDA1, LAMBDA2, 1)
+        E_plus = get_energies_for_p(p, tau, LAMBDA1, LAMBDA2, 1)
         # Now find energy of -1 level
         id_e1 = find_id_e1(E_plus)
 
