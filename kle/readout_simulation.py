@@ -1,20 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from kle.fudge_ABS import get_R, get_labeled_eigenenergies_of_ABS, PHI, N_PHI
 
 # Sss, I want to simulate the dispersive shift as a function of circuit parameters, potentially optimizing
 # Maybe at some point with dissipation for limits on Qi
 
-E011, E01m1, E0m11, E0m1m1 = get_labeled_eigenenergies_of_ABS()
 
-delta_phi = PHI[1] - PHI[0]
+N_RES = 3
+N_ABS = 1
+
+
 def get_derivative(arr, i):
     return (-0.5 * arr[i-1] + 0.5 * arr[i+1]) / delta_phi
 
 
+
 TAU = 0.95
-N_ABS = 4
+N_ABS = 2.25
 N_res = 2
 
 DELTA = 180e-6
