@@ -1,23 +1,26 @@
 import klayout.db as pya
 
-from kle.layout.layout_defaults import get_chip_edges
+class Layout:
+    def __init__(self, design_id, layer_names, dbu=0.001):
+        self.dbu = dbu
+        self.layout = pya.Layout()
+        self.main_cell = self.layout.create_cell("main")
 
+        self.layers = {
+            l_name: self.layout.layer(i, 0, l_name) for i, l_name in enumerate(layer_names)
+        }
 
-def get_new_layout():
-    layout = pya.Layout()
-    layout.dbu = 0.001
+        self.elements_to_build = []
 
-    # Make layers
-    main_cell = layout.create_cell("main")
+    def add_element(self, element):
+        self.elements_to_build.append(element)
 
-    l0 = layout.layer(0, 0, "base")
+    def get_layers(self):
+        return self.layers
 
-    edges, d_id = get_chip_edges(l0, 2500, 10, design_id="000")
+    def build(self):
+        for element in self.elements_to_build:
+            element.build_to_cell(self.main_cell)
 
-    edges.build_to_cell(main_cell)
-    d_id.build_to_cell(main_cell)
-
-    return layout
-
-if __name__ == "__main__":
-    get_new_layout().write("C:/Users/nbr720/Documents/PhD/design/gds_files/test.gds")
+    def save_gds(self, file_path):
+        self.layout.write(file_path)
