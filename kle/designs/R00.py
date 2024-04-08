@@ -55,13 +55,14 @@ RES_GAP = 10
 
 # ==== MAKE RESONATORS =====
 COUPLER_WIDTHS = [10, 11, 12, 13, 14, 15]
-RESONATOR_LEN = [5850, 5364.11, 4920.93, 4509.63, 4180.68, 3922.35]
+# 5, 5.5, 6, 6.5, 7, 7.5 GHz
+RESONATOR_LEN = [5850, 5364.11, 4900.93, 4278.63, 4000.68, 3722.35]
 RESONATOR_POS = [
     (380, 2661.5), (800, 2661.5), (1220, 2661.5), (1640, 2661.5),
-    (2060, 2661.5), (2480, 2661.5)]
+    (2060, 2661.5), (2600, 2661.5)]
 MASK = [True, True, True, True, True, True]
 # MASK = [False for _ in range(6)]
-# MASK[5] = True
+# MASK[1] = True
 
 for c_w, l, pos, mask in zip(COUPLER_WIDTHS, RESONATOR_LEN, RESONATOR_POS, MASK):
     if mask:
@@ -73,9 +74,9 @@ for c_w, l, pos, mask in zip(COUPLER_WIDTHS, RESONATOR_LEN, RESONATOR_POS, MASK)
 
 
 # ==== ADD FLUX PINNING GRID ====
-layout.add_element(
-    get_grid(layers["sc"], [10, 20], [10, 20], 2)
-)
+# layout.add_element(
+#     get_grid(layers["sc"], [10, 20], [10, 20], 2)
+# )
 # ====
 
 
