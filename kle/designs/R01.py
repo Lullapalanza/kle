@@ -59,9 +59,9 @@ RES_GAP = 10
 COUPLER_WIDTHS = [10, 11, 12, 13, 14, 15]
 RESONATOR_LEN = [5850, 5364.11, 4900.93, 4278.63, 4000.68, 3722.35]
 RESONATOR_POS = [
-    (380, 2661.5), (800, 2661.5), (1220, 2661.5), (1640, 2661.5),
-    (2060, 2661.5), (2600, 2661.5)]
-MASK = [True, True, True, True, True, True]
+    (380, 2660.5), (800, 2660.5), (1220, 2660.5), (1640, 2660.5),
+    (2060, 2660.5), (2600, 2660.5)]
+MASK = [True, True, True, True, True, True] 
 # MASK = [False for _ in range(6)]
 # MASK[5] = True
 
