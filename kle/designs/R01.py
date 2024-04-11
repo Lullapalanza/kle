@@ -15,13 +15,19 @@ from kle.layout.cpw_auto import (
     get_coupler,
     get_grid
 )
+
+# FAB STUFF
+COMPENSATION = 0.1
+#
+
+
 layout = KleLayout(3000, 3000, ["border", "-sc"])
 layers = layout.get_layers()
 
 
 # ==== MAKE PL AND PORTS ====
-PL_WIDTH = 7
-PL_GAP = 4
+PL_WIDTH = 7 - COMPENSATION
+PL_GAP = 4 + COMPENSATION
 pl = get_routed_cpw(
     layers["sc"],
     [(0, 0),
@@ -46,12 +52,12 @@ layout.add_element(pl.move(160, 2700))
 
 
 # ==== COUPLER DEFAULTS ====
-COUPLER_DISTANCE = 3
+COUPLER_DISTANCE = 3 + COMPENSATION
 COUPLER_HEIGHT = 10
 COUPLER_GAP = 6
 
-RES_WIDTH = 2
-RES_GAP = 10
+RES_WIDTH = 2 - COMPENSATION
+RES_GAP = 10 + COMPENSATION
 # =====
 
 
@@ -70,6 +76,7 @@ for c_w, l, pos, mask in zip(COUPLER_WIDTHS, RESONATOR_LEN, RESONATOR_POS, MASK)
         res = get_resonator(layers["sc"], l, RES_WIDTH, RES_GAP)
         coupler = get_coupler(layers["sc"], RES_WIDTH, RES_GAP, PL_WIDTH, PL_GAP, c_w, COUPLER_HEIGHT, COUPLER_GAP, COUPLER_DISTANCE)
         res.add_element(coupler)
+        pos = pos[0], pos[1] + 0.049
         layout.add_element(res.move(*pos))
 # =====
 
@@ -82,4 +89,4 @@ for c_w, l, pos, mask in zip(COUPLER_WIDTHS, RESONATOR_LEN, RESONATOR_POS, MASK)
 
 
 layout.build()
-layout.save_gds("C:/Users/nbr720/Documents/PhD/design/gds_files/R01_20240408.gds")
+layout.save_gds("C:/Users/nbr720/Documents/PhD/design/gds_files/R01_20240411.gds")
