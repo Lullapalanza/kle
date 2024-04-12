@@ -17,7 +17,7 @@ HBAR = PLANK / (2 * np.pi)
 EV_TO_HZ = Q / PLANK
 
 TAU = 0.95
-DELTA = 60e-6 # in eV
+DELTA = 100e-6 # in eV
 
 
 def get_derivative(v_m1, v_p1, delta):
@@ -32,9 +32,9 @@ if __name__ == "__main__":
     phis = np.linspace(2, 0, num=N_PHI) * np.pi
     delta_phi = phis[1] - phis[0]
 
-    N_res = 5
+    N_res = 2  
     L = [0, ] # [-1, 0, 1,]
-    lambda_1, lambda_2 = 1, 1# 5, 5
+    lambda_1, lambda_2 = 1, 1 # 4, 5
     
     Metzger_E = get_coupled_Metzger_ABS(TAU, lambda_1, lambda_2, phis, L)
     uncoupled_E = get_uncoupled_ABS_eigvals(lambda_1, lambda_2, phis, L)
@@ -73,16 +73,25 @@ if __name__ == "__main__":
         phi_brim = r * np.sqrt(HBAR * Z_res / 2)
         phi_brim_fixed = phi_brim * EV_TO_HZ
 
+        if i_phi == 70:
+            print(H_ABS)
+            print(dH_ABS)
+            print(phi_brim_fixed)
         # Now I have all the parts needed
         N_ABS = len(H_ABS)
 
-        f_res = 7e9 # in Hz
+        f_res = 20e9 # in Hz
         H_res = f_res * np.diag([i+1 for i in range(N_res)])
 
         a_res = np.diag(np.sqrt([i+1 for i in range(N_res-1)]), k=-1)
         a_dagger_res = np.diag(np.sqrt([i+1 for i in range(N_res-1)]), k=1)
 
-        H_tot = np.kron(H_res, np.eye(N_ABS)) + np.kron(np.eye(N_res), H_ABS) + np.kron(phi_brim_fixed * (a_dagger_res + a_res), dH_ABS)
+        H_tot = np.kron(H_res, np.eye(N_ABS)) + np.kron(np.eye(N_res), H_ABS) + 100 * np.kron(phi_brim_fixed * (a_dagger_res + a_res), dH_ABS)
+
+        if i_phi == 70:
+            print(np.kron(H_res, np.eye(N_ABS)))
+            print(np.kron(np.eye(N_res), H_ABS))
+            print(np.kron(phi_brim_fixed * (a_dagger_res + a_res), dH_ABS))
 
         eigvals, eigvecs = np.linalg.eig(H_tot)
         sorted_eigvals = np.sort(eigvals)

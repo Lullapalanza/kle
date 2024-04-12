@@ -2,8 +2,8 @@ import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
-from kle.Metzger_ABS import get_coupled_Metzger_ABS
-from kle.ABS import get_uncoupled_ABS_eigvals, get_coupled_ABS_eigvals
+from kle.hamiltonian_simulation.Metzger_ABS import get_coupled_Metzger_ABS
+from kle.hamiltonian_simulation.ABS import get_uncoupled_ABS_eigvals, get_coupled_ABS_eigvals
 
 
 def test_callable(epsilon_0, epsilon_1, var_tau, phi):
@@ -41,42 +41,6 @@ def plot_for_res(phis, res1, res2):
         for l_data in data_M.values():
             for e_p in l_data:
                 plt.plot(phis, e_p, color=color_m, ls="--", alpha=0.7)
-
-
-
-# Some brute force
-def brute_force():
-    phis = np.linspace(0.3, 1.7, num=101) * np.pi
-    TAU = 0.9
-    L = [0, ]
-    u_res = get_uncoupled_ABS_eigvals(0.2, 0.05, phis, L)
-
-    def solve_for_model(model_params):
-        """
-        [A, B, p]
-        """
-        A, B, p = model_params
-        def model_callable(epsilon_0, epsilon_1, var_tau, phi):
-            g = A / (np.power(B, 2) + np.power(epsilon_0 - epsilon_1, 2))
-            return g, g
-
-        res = get_coupled_ABS_eigvals(u_res, model_callable, TAU, phis, total_l=len(L)*2)
-        res_M = get_coupled_Metzger_ABS(TAU, 0.2, 0.05, phis)
-        m_diff = model_difference(res, res_M, spin_labels=[1])
-        print(m_diff)
-        return m_diff
-
-    opt_res = opt.minimize(solve_for_model, [1.148e+00, 1.900e+00, 8.081e-01], options={"maxiter": 10})
-    print(opt_res)
-    
-    def model_callable(epsilon_0, epsilon_1, var_tau, phi):
-        A, B, p = opt_res.x
-        g = A / (np.power(B, 2) + np.power(epsilon_0 - epsilon_1, 2))
-        return g, g
-    coupled_res = get_coupled_ABS_eigvals(u_res, model_callable, TAU, phis, total_l=len(L)*2)
-    res_M = get_coupled_Metzger_ABS(TAU, 0.2, 0.05, phis)
-    
-    plot_for_res(phis, coupled_res, res_M)
 
 
 

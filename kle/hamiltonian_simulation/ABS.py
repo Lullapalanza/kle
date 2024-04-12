@@ -37,18 +37,54 @@ def get_uncoupled_ABS_eigvals(lambda_1, lambda_2, list_of_phi, list_of_l):
     return results
 
 
+def _get_new_arr(length):
+    _new_arr = np.empty(length)
+    _new_arr[:] = np.nan
+    return _new_arr
+
+
 def get_coupled_ABS_hamiltonian(uncoupled_res, scattering_callable, tau, list_of_phi, total_l):
-    pass
+    results = []
+
+    for spin_label, spin_data in uncoupled_res.items():
+        H_dim = len(spin_data) * 2
+
+        for i_phi, phi in enumerate(list_of_phi):
+            H_scattering = np.zeros((H_dim, H_dim))
+            prev_E = None
+            for i_l, l_data in enumerate(spin_data.values()):
+                l_label = list(spin_data.keys())[i_l]
+                for p in [0, 1]:
+                    H_scattering[2 * i_l + p][2 * i_l + p] = l_data[p][i_phi]
+
+                    if prev_E is not None:
+                        scattering_coupling_0, scattering_coupling_1 = scattering_callable(prev_E, l_data[p][i_phi], tau, phi, spin_label, l_label)
+
+                        H_scattering[2 * i_l + p][2 * i_l + p - 1] = scattering_coupling_0
+                        H_scattering[2 * i_l + p - 1][2 * i_l + p] = scattering_coupling_1
+
+                    if p == 1 and i_l > 0:
+                        scattering_coupling_0, scattering_coupling_1 = scattering_callable(
+                            H_scattering[2 * i_l + p - 3][2 * i_l + p -3], l_data[p][i_phi],
+                            tau, phi, spin_label, l_label
+                        )
+                    
+                        H_scattering[2 * i_l + p][2 * i_l + p - 3] = scattering_coupling_0
+                        H_scattering[2 * i_l + p - 3][2 * i_l + p] = scattering_coupling_1
+
+                    prev_E = l_data[p][i_phi]
+
+
+            results.append(H_scattering)
+
+    return results
+
 
 
 def get_coupled_ABS_eigvals(uncoupled_res, scattering_callable, tau, list_of_phi, total_l):
     """
     Using uncoupled values find new eigenenergies
     """
-    def _get_new_arr(length):
-        _new_arr = np.empty(length)
-        _new_arr[:] = np.nan
-        return _new_arr
 
     results = {
         -1: [_get_new_arr(len(list_of_phi)) for _ in range(total_l)],
