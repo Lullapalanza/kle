@@ -137,29 +137,35 @@ if __name__ == "__main__":
 
     for spin, data in res.items():
         for l_label, l_data in data.items():
-            plt.plot(phis, l_data[0], label=f"{l_label}L{spin}", ls="--", alpha=0.5, color="black")
-            plt.plot(phis, l_data[1], label=f"{l_label}R{spin}", ls="--", alpha=0.5, color="gray")
+            plt.plot(phis, l_data[0], label=f"{l_label}L{spin}", color="blue")
+            plt.plot(phis, l_data[1], label=f"{l_label}R{spin}", color="red")
 
-    def test_callable(epsilon_0, epsilon_1, var_tau, phi, spin_label, l_label):
-        T0 = 1 / (
-            (1-epsilon_0**2) * (2/var_tau - 1)**2 + epsilon_0**2
-        )
-        T1 = 1 / (
-            (1-epsilon_1**2) * (2/var_tau - 1)**2 + epsilon_1**2
-        )
-        R0 = 1 - T0
-        R1 = 1 - T1
-        return R0, R1
+    # def test_callable(epsilon_0, epsilon_1, var_tau, phi, spin_label, l_label):
+    #     T0 = 1 / (
+    #         (1-epsilon_0**2) * (2/var_tau - 1)**2 + epsilon_0**2
+    #     )
+    #     T1 = 1 / (
+    #         (1-epsilon_1**2) * (2/var_tau - 1)**2 + epsilon_1**2
+    #     )
+    #     R0 = 1 - T0
+    #     R1 = 1 - T1
+    #     return R0, R1
 
-    res = get_coupled_ABS_eigvals(res, test_callable, TAU, phis, total_l=len(L)*2)
+    # res = get_coupled_ABS_eigvals(res, test_callable, TAU, phis, total_l=len(L)*2)
     
-    for spin, data in res.items():
-        if spin == 1:
-            color = "blue"
-        else:
-            color = "red"
-        for d in data:
-            plt.plot(phis, d, color=color)
+    # for spin, data in res.items():
+    #     if spin == 1:
+    #         color = "blue"
+    #     else:
+    #         color = "red"
+    #     for d in data:
+    #         plt.plot(phis, d, color=color)
     
-    plt.show()
+    plt.ylabel(r"$\epsilon / \Delta$", fontsize=14)
+    plt.xlabel(r"$\phi$", fontsize=14)
+    plt.title(r"Short Junction ABS at $\tau = 1$")
+    
+    plt.savefig("C:/Users/nbr720/Documents/Phd/design/kle/manual_figures/sl_ideal_ABS.png")
+
+    # plt.show()
     plt.close()

@@ -21,7 +21,7 @@ class KleShape:
 
     def build_to_cell(self, target_cell):
         if self.layer.polarity == 1:
-            target_cell.shapes(layer).insert(
+            target_cell.shapes(self.layer.layer).insert(
                 pya.Polygon([pya.Point(x / LAYOUT_DBU, y / LAYOUT_DBU) for x, y in self.points])
             )
         elif self.layer.polarity == -1:
@@ -137,7 +137,7 @@ class KleLayout:
             if kle_layer.polarity == -1:
                 self.main_cell.shapes(
                     kle_layer.layer
-                ).insert(kle_layer.layer_base) 
+                ).insert(kle_layer.layer_base)
     
     def save_gds(self, file_path):
         self.layout.write(file_path)

@@ -47,7 +47,7 @@ def plot_for_res(phis, res1, res2):
 if __name__ == "__main__":
     phis = np.linspace(2, 0, num=201) * np.pi
     TAU = 0.95
-    L = [-1, 0, 1,]
+    L = [0, ]# [-1, 0, 1,]
 
     lambda_1, lambda_2 = 4, 5
     res_M = get_coupled_Metzger_ABS(TAU, lambda_1, lambda_2, phis, L)

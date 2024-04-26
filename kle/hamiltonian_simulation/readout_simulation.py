@@ -33,8 +33,8 @@ if __name__ == "__main__":
     delta_phi = phis[1] - phis[0]
 
     N_res = 5
-    L = [0, ] # [-1, 0, 1,]
-    lambda_1, lambda_2 = 1, 1# 5, 5
+    L = [0, ]
+    lambda_1, lambda_2 = 4, 5
     
     Metzger_E = get_coupled_Metzger_ABS(TAU, lambda_1, lambda_2, phis, L)
     uncoupled_E = get_uncoupled_ABS_eigvals(lambda_1, lambda_2, phis, L)

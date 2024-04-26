@@ -97,7 +97,7 @@ if __name__ == "__main__":
     phis = np.linspace(0, 2, num=201) * np.pi
     TAU = 0.95
 
-    res = get_coupled_Metzger_ABS(TAU, 3, 4, phis, list_of_l=[-1, 0, 1])
+    res = get_coupled_Metzger_ABS(TAU, 0.1, 0.1, phis, list_of_l=[0, ])
     
     for spin, data in res.items():
         if spin == 1:
@@ -107,7 +107,11 @@ if __name__ == "__main__":
         for l_label, l_data in data.items():
             for e_p in l_data:
                 plt.plot(phis, e_p, color=color)
+
+    plt.ylabel(r"$\epsilon / \Delta$", fontsize=14)
+    plt.xlabel(r"$\phi$", fontsize=14)
+    plt.title(r"Short Junction ABS at $\tau = 0.95$")
     
-    plt.show()
+    plt.savefig("C:/Users/nbr720/Documents/Phd/design/kle/manual_figures/sl_ABS.png")
     plt.close()
             
