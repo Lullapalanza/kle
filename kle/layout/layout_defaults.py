@@ -3,7 +3,7 @@ from kle.layout.layout import KleLayoutElement, KleShape
 
 def get_cpw_port(layer, connection_width, connection_gap, port_gap=10, port_width=80):
     port = KleLayoutElement("port")
-    DIAG_LENGTH = 80
+    DIAG_LENGTH = 140
     top_gap = KleShape(
         layer, [(0, 0), (port_width, 0), (port_width + DIAG_LENGTH, DIAG_LENGTH),
         (port_width + DIAG_LENGTH, DIAG_LENGTH + connection_gap), (port_width, port_gap), (0, port_gap)]

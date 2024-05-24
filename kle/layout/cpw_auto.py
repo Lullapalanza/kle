@@ -29,6 +29,10 @@ class KleVector:
             return KleVector(self.x_dir * other, self.y_dir * other)
         elif type(other) == KleVector:
             return self.x_dir * other.x_dir + self.y_dir * other.y_dir
+    
+    def __rmul__(self, other):
+        if type(other) in [float, int]:
+            return KleVector(self.x_dir * other, self.y_dir * other)
 
     def __truediv__(self, other):
         if type(other) in [float, int]:
@@ -118,6 +122,8 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
     round 
     """
     # First add 2 new path nodes around every node with distance radii
+    print("New smooth")
+    print(course_path[0])
     smooth_path = [course_path[0], ]
     for i, point in enumerate(course_path[1:-1]):
         dir_1 = get_vector_between_points(
@@ -144,12 +150,19 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
         prev_c_point = point - dir_1 * d
         next_c_point = point + dir_2 * d
         # print(prev_c_point, center_r, (prev_c_point.x - center_r.x)/radii)
-        phi = np.arccos(round(prev_c_point.x - center_r.x, 6)/radii)
+        if dir_1.x_dir < 0:
+            phi = -np.arccos(round(prev_c_point.x - center_r.x, 6)/radii)
+        else:
+            phi = np.arccos(round(prev_c_point.x - center_r.x, 6)/radii)
 
         curr_point = KlePoint(
             center_r.x + radii * np.cos(phi),
             center_r.y - sign * radii * np.sin(phi)
         )
+        # curr_point = KlePoint(
+        #     center_r.x * radii * np.cos(phi),
+        #     center_r.y * radii * np.sin(phi)
+        # )
         smooth_path.append(curr_point) 
 
         while np.sqrt((curr_point - next_c_point).x**2 + (curr_point - next_c_point).y**2) > (radii * phi_step / (2 * np.pi)):
@@ -173,7 +186,7 @@ def get_distance(path):
         p0 = p
     return distance
 
-def get_routed_cpw(layer, path, width, gap, radii=20, phi_step=0.5):
+def get_routed_cpw(layer, path, width, gap, radii=40, phi_step=0.5):
     cpw = KleLayoutElement("routed_cpw")
 
     path = [
@@ -277,6 +290,18 @@ def get_coupler(layer, res_width, res_gap, pl_width, pl_gap, coupler_width, coup
     ]).move(-pl_width/2, 2*coupler_height + coupler_distance + res_width + pl_width))
 
     return coupler
+
+
+def get_finger_cap(layer):
+    """
+    TEMP BAD!
+    """
+    coupler = KleLayoutElement("coupler")
+
+    
+
+    return coupler
+
 
 def get_grid(layer, x_pos, y_pos, size):
     grid = KleLayoutElement("grid")
