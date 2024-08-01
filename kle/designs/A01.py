@@ -22,8 +22,8 @@ layout = KleLayout(600, 5000, ["-sc"])
 layers = layout.get_layers()
 
 # ==== MAKE PL AND PORTS ====
-PL_WIDTH = 7
-PL_GAP = 4
+PL_WIDTH = 3.5
+PL_GAP = 2
 pl = get_routed_cpw(
     layers["sc"],
     [
@@ -45,8 +45,8 @@ COUPLER_HEIGHT = 15
 COUPLER_GAP = 7
 COUPLER_WIDTH = 30
 
-RES_WIDTH = 7
-RES_GAP = 4
+RES_WIDTH = 2
+RES_GAP = 10
 
 COUPLING_WIDTH = 250
 RES_LENGTH = 4400
