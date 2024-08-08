@@ -39,13 +39,15 @@ def get_H_tot(xi, gamma, U):
         np.eye(4)
     )
     
+    E_Z = 0.1
+    H_EZ = 0.5 * E_Z * (np.matmul(up_d_dag, up_d) - np.matmul(down_d_dag, down_d))
     # print(H_t)
-    return H_dot + H_t + H_sc
+    return H_dot + H_t + H_sc + H_EZ
 
 
 U = 1
-g_arr = np.arange(0, 1, 0.05)
-xi_arr = np.arange(-1, 1, 0.05)
+g_arr = np.arange(0, 1, 0.1)
+xi_arr = np.arange(-1, 1, 0.1)
 
 res = np.empty((g_arr.size, xi_arr.size))
 
@@ -56,7 +58,7 @@ for i, _g in enumerate(g_arr):
         # print(_H)
         evals, evecs = np.linalg.eig(_H)
         # print(_g, _xi)
-        # print(evals)
+        print(evals)
         # print(evecs)
 
         if min(evals[0], evals[1]) < evals[2]:
