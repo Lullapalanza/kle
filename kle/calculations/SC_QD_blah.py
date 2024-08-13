@@ -116,34 +116,52 @@ def get_H(xi, gamma, U, DELTA, phi=3.14):
     # print("INH", xi, gamma)
     H_dot = np.kron(
         xi * (n_up + n_down) + U * np.matmul(n_down, n_up),
-        np.eye(4)
+        np.eye(16)
     )
 
     # Superconductor
-    H_sc = np.kron(
+    H_sc_R = np.kron(
         np.eye(4),
-        DELTA * (np.matmul(up_d_dag, down_d_dag) + np.matmul(down_d, up_d))
+        np.kron(np.eye(4), - DELTA * (np.matmul(up_d_dag, down_d_dag) + np.matmul(down_d, up_d)))
+    )
+    print(- DELTA * (np.matmul(up_d_dag, down_d_dag) + np.matmul(down_d, up_d)))
+    1/0
+
+    H_sc_L = np.kron(
+        np.eye(4),
+        np.kron(-DELTA * (np.matmul(up_d_dag, down_d_dag) * np.exp(-1.j * phi) + np.matmul(down_d, up_d) * np.exp(1.j * phi)), np.eye(4))
     )
 
-    # Tunneling
-    H_t = gamma * (
+    H_t_R = gamma * (
+        np.kron(up_d_dag, np.kron(np.eye(4), up_d)) + np.kron(up_d, np.kron(np.eye(4), up_d_dag)) +
+        np.kron(down_d_dag, np.kron(np.eye(4), down_d)) + np.kron(down_d, np.kron(np.eye(4), down_d_dag))
+    )
+
+    H_t_L = gamma * np.kron(
         np.kron(up_d_dag, up_d) + np.kron(up_d, up_d_dag) +
         np.kron(down_d_dag, down_d) + np.kron(down_d, down_d_dag)
-    )
+    , np.eye(4))
 
-    H_total = H_dot + H_sc + H_t
+    # gamma_sc = 0.2
+    # H_sc_t = gamma_sc * np.kron(
+    #     np.eye(4),
+    #     DELTA * np.exp(-1.j * phi/2) * n_up - DELTA * np.exp(1.j * phi/2) * n_down
+    # )
+
+    H_total = H_dot + H_sc_L + H_sc_R + H_t_L + H_t_R
     # evals, evecs = np.linalg.eig(H_total)
     # print(evals, evecs)
     
     return H_total
 
 
-e_dot = np.kron(np.diag([0, 1, 1, 2]), np.eye(4))
+e_dot = np.kron(np.diag([0, 1, 1, 2]), np.eye(16))
 
 e_tot = np.kron(np.diag([0, 1, 1, 2]), np.eye(4)) + np.kron(np.eye(4), np.diag([0, 1, 1, 2]))
 
 def get_state_dot_charge(state):
     res = state.dot(e_dot).dot(state)
+    # print(res)
     # res = state.dot(e_tot).dot(state)
     return res
 
@@ -190,8 +208,8 @@ def sep_even_odd(mat):
 
 U = 1
 Delta = 1
-phi = 0
-g_arr = np.arange(0, 1, 0.02)
+phi = 3.14
+g_arr = np.arange(0, 0.5, 0.02)
 xi_arr = np.arange(-1, 1, 0.02)
 res = np.empty((g_arr.size, xi_arr.size))
 
@@ -202,12 +220,12 @@ resoo = np.empty((g_arr.size, xi_arr.size))
 for i, _g in enumerate(g_arr):
     for j, _xi in enumerate(xi_arr):
         _xi = _xi - U/2
-        _H = get_H(_xi, _g, U, Delta)
+        _H = get_H(_xi, _g, U, Delta, phi)
         evals, evecs = np.linalg.eig(_H)
 
-        vals_e, vecs_e, vals_o, vecs_o, _h = block_diag_ZBW(_xi, 0, 0, U, Delta, _g)
-        charges_e = get_charge_e(vecs_e[:,0])
-        charges_o = get_charge_o(vecs_o[:,0])
+        # vals_e, vecs_e, vals_o, vecs_o, _h = block_diag_ZBW(_xi, 0, 0, U, Delta, _g)
+        # charges_e = get_charge_e(vecs_e[:,0])
+        # charges_o = get_charge_o(vecs_o[:,0])
 
         # print("B", _xi, _g)
         # print(_H)
@@ -215,8 +233,6 @@ for i, _g in enumerate(g_arr):
         # print("sep", vals_e, vals_o)
         # # print(charges_e, charges_o)
         # print("tot", evals)
-
-        np.linalg.eig(_H)
         
         ind = np.argsort(evals)
         evecs = evecs[:,ind]
@@ -224,14 +240,18 @@ for i, _g in enumerate(g_arr):
 
         _v = evecs[:,0]
         
-        res[i][j] = get_state_dot_charge(_v)
-        rese[i][j] = charges_e[0][0]
-        reso[i][j] = charges_o[0][0]
+        # if _g == 0.14 and _xi == -0.26:
+        # print(_g, _xi, evals[:5])
 
-        if vals_e[0] < vals_o[0]:
-            resoo[i][j] = charges_e[0][0]
-        else:
-            resoo[i][j] = charges_o[0][0]
+        res[i][j] = get_state_dot_charge(_v)
+        # rese[i][j] = charges_e[0][0]
+        # reso[i][j] = charges_o[0][0]
+
+
+        # if vals_e[0] < vals_o[0]:
+        #     resoo[i][j] = charges_e[0][0]
+        # else:
+        #     resoo[i][j] = charges_o[0][0]
 
 import matplotlib.pyplot as plt
 
@@ -239,16 +259,39 @@ plt.pcolormesh(xi_arr, g_arr, res)
 plt.colorbar()
 plt.show()
 
+xi = -0.26 # -0.27
+g = 0.14
+P = np.arange(-2, 2, 0.05) * np.pi
+someres = [[], [], []]
 
-plt.pcolormesh(xi_arr, g_arr, rese)
-plt.colorbar()
+
+for p in P:
+    _xi = _xi - U/2
+    _H = get_H(xi, g, U, Delta, p)
+    evals, evecs = np.linalg.eig(_H)
+
+    ind = np.argsort(evals)
+    evecs = evecs[:,ind]
+    evals = evals[ind]
+
+    for i in range(len(someres)):
+        someres[i].append(evals[i])
+
+for sr in someres:
+    plt.plot(P, sr)
 plt.show()
 
-plt.pcolormesh(xi_arr, g_arr, reso)
-plt.colorbar()
-plt.show()
 
-plt.pcolormesh(xi_arr, g_arr, resoo)
-plt.colorbar()
-plt.show()
-plt.close()
+
+# plt.pcolormesh(xi_arr, g_arr, rese)
+# plt.colorbar()
+# plt.show()
+
+# plt.pcolormesh(xi_arr, g_arr, reso)
+# plt.colorbar()
+# plt.show()
+
+# plt.pcolormesh(xi_arr, g_arr, resoo)
+# plt.colorbar()
+# plt.show()
+# plt.close()
