@@ -75,15 +75,32 @@ def get_H(phi, xi, gamma, U, DELTA, E_Z=0):
             down_d_dag,
             np.kron(np.eye(4), down_d)
         )
-    H_t_R = gamma * (_H_R + np.transpose(np.conjugate(_H_R)))
+    H_t_R = -gamma * (_H_R + np.transpose(np.conjugate(_H_R)))
 
     _H_L = np.kron(
         np.kron(up_d_dag, up_d) + np.kron(down_d_dag, down_d),
         np.eye(4)
     )
-    H_t_L = H_t = gamma * (_H_L + np.transpose(np.conjugate(_H_L)))
+    H_t_L = -gamma * (_H_L + np.transpose(np.conjugate(_H_L)))
 
-    H_total = H_dot + H_sc_L + H_sc_R + H_t_L + H_t_R
+    # spin flip tunneling
+    sf_gamma = 0.1
+    _H_sfR = np.kron(
+            up_d_dag,
+            np.kron(np.eye(4), down_d)
+        ) + np.kron(
+            down_d_dag,
+            np.kron(np.eye(4), up_d)
+        )
+    H_t_sfR = sf_gamma * (_H_sfR * 1.j + np.transpose(np.conjugate(_H_sfR)) * -1.j)
+
+    _H_sfL = np.kron(
+        np.kron(up_d_dag, down_d) + np.kron(down_d_dag, up_d),
+        np.eye(4)
+    )
+    H_t_sfL = sf_gamma * (_H_sfL * -1.j + np.transpose(np.conjugate(_H_sfL)) * 1.j)
+
+    H_total = H_dot + H_sc_L + H_sc_R + H_t_L + H_t_R + H_t_sfR + H_t_sfL
     return H_total
 
 
@@ -98,7 +115,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(2)
     # Run some test
     U = 1
-    Delta = 1
+    Delta = 0.2
 
     phi0 = 0
     phi1 = np.pi
@@ -113,12 +130,12 @@ if __name__ == "__main__":
         for j, _xi in enumerate(xi_arr):
             _xi = _xi - U/2
 
-            _H = get_H(phi0, _xi, _g, U, Delta)
+            _H = get_H(phi0, _xi, _g, U, Delta, 0.1)
             evals, evecs = np.linalg.eigh(_H)
             _v = evecs[:,0] # Take the smallest eigenvalue eigenvector - ground state            
             res_phi0[i][j] = get_state_dot_charge(_v)
 
-            _H = get_H(phi1, _xi, _g, U, Delta)
+            _H = get_H(phi1, _xi, _g, U, Delta, 0.1)
             evals, evecs = np.linalg.eigh(_H)
             _v = evecs[:,0] # Take the smallest eigenvalue eigenvector - ground state
             res_phi1[i][j] = get_state_dot_charge(_v)
