@@ -44,6 +44,10 @@ class KleShape:
         self.points = [(-x, y) for x, y in self.points]
         return self
 
+    def rotate_left(self):
+        self.points = [(y, x) for x, y in self.points]
+        return self
+
     # def rotate_left(self):
     #     self._polygon.transform(pya.DTrans(1))
     #     return self
@@ -75,21 +79,11 @@ class KleLayoutElement:
         [subelem.flip_horizontally() for subelem in self.subelements]
         return self
 
-    # def add_elements(self, list_of_poly: list[KlePolygon]):
-    #     self._subelements.extend(list_of_poly)
-
-    # def rotate_left(self):
-    #     [poly.rotate_left() for poly in self._subelements]
-    #     return self
-
-    # def rotate_right(self):
-    #     [poly.rotate_right() for poly in self._subelements]
-    #     return self
-
-    # def get_copy(self):
-    #     copy = LayoutElement(self._name + "_copy")
-    #     copy._subelements = [poly.get_copy() for poly in self._subelements]
-    #     return copy
+    def get_copy(self):
+        copy = KleLayoutElement(self.name)
+        for e in self.subelements:
+            copy.add_element(e.get_copy())
+        return copy
 
 
 
