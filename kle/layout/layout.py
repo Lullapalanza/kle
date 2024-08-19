@@ -1,3 +1,4 @@
+import math
 import copy
 import klayout.db as pya
 from typing import Optional, Any
@@ -61,6 +62,14 @@ class KleShape:
 
     def rotate_right(self):
         self.points = [(y, -x) for x, y in self.points]
+        return self
+
+    def rotate_by_angle(self, angle):
+        angle = angle * math.pi / 180 
+        self.points = [(
+            math.cos(angle) * x + math.sin(angle) * y,
+            -math.sin(angle) * x + math.cos(angle) * y,
+        ) for x, y in self.points]
         return self
 
 def create_shape(layer, points, origin=None):
