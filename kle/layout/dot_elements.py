@@ -1,51 +1,83 @@
 import math
-from kle.layout.layout import KleLayout, KleLayoutElement, KleShape
+from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape
 
 
 def get_circle_points(r, n_pts=50):
     return [(math.cos(2*math.pi/n_pts*x)*r,math.sin(2*math.pi/n_pts*x)*r) for x in range(0,n_pts+1)]
 
+def get_dot_with_leads(
+    ohm_layer, gate_0_layer, gate_1_layer,
+    bias_x=0, bias_y=0, dot_r=0.075,
+    barrier_height=0.04, barrer_width=0.15,
+    lead_height=0.1, lead_width=0.085 # This is not great, need to figure out how to reduce this
+    # to managable amounds TODO
+):
+    dot = KleLayoutElement("dit")
 
-def get_sensor_dot(ohm_layer, gate_0_layer, gate_1_layer, DOT_R=0.150/2, LEAD_WIDTH=0.1):
-    # Make a generic 2 leads + QD + gates + screening element? How to connect the sides? Some kind of smart routing?
-    sd = KleLayoutElement("sd")
-    
-    # DOT_R = 0.150/2
-    sd.add_element(KleShape(gate_0_layer, get_circle_points(DOT_R))) # Make a circle for sensor dot
+    # Make a circle for the dot
+    dot.add_element(create_shape(gate_0_layer, get_circle_points(dot_r)))
 
-    BARRIER_WIDTH = 0.040
-    BARRIER_OVERLAP = 0.000
-    BARRIER_EXTRA = -0.01
-
+    # Add barrier up and below
     barrier_points = [
-        (-DOT_R - BARRIER_EXTRA, DOT_R - BARRIER_OVERLAP),
-        (DOT_R + BARRIER_EXTRA, DOT_R-BARRIER_OVERLAP),
-        (DOT_R + BARRIER_EXTRA, DOT_R-BARRIER_OVERLAP + BARRIER_WIDTH),
-        (-DOT_R - BARRIER_EXTRA, DOT_R-BARRIER_OVERLAP + BARRIER_WIDTH)
+        (-barrer_width/2, dot_r),
+        (barrer_width/2, dot_r),
+        (barrer_width/2, dot_r + barrier_height),
+        (-barrer_width/2, dot_r + barrier_height)
     ]
-    barrier_s = KleShape(gate_1_layer, barrier_points)
-
-    sd.add_element(barrier_s.get_copy())
-    sd.add_element(barrier_s.get_copy().move(
-        0, -2 * DOT_R - BARRIER_WIDTH + BARRIER_OVERLAP * 2
+    barrier_s = create_shape(gate_1_layer, barrier_points)
+    dot.add_element(barrier_s.move(0, 0).get_copy())
+    dot.add_element(barrier_s.get_copy().move(
+        0, -2 * dot_r - barrier_height
     ))
 
-    LEAD_HEIGHT = 0.200
-    # LEAD_WIDTH = 0.100
-    LEAD_OVERLAP = 0.000
-
+    # Add Leads
     lead_points = [
-        (-LEAD_WIDTH/2, DOT_R-BARRIER_OVERLAP + BARRIER_WIDTH - LEAD_OVERLAP),
-        (LEAD_WIDTH/2, DOT_R-BARRIER_OVERLAP + BARRIER_WIDTH - LEAD_OVERLAP),
-        (LEAD_WIDTH/2, DOT_R-BARRIER_OVERLAP + BARRIER_WIDTH - LEAD_OVERLAP + LEAD_HEIGHT),
-        (-LEAD_WIDTH/2, DOT_R-BARRIER_OVERLAP + BARRIER_WIDTH - LEAD_OVERLAP + LEAD_HEIGHT),
+        (-lead_width/2, dot_r + barrier_height),
+        (lead_width/2, dot_r + barrier_height),
+        (lead_width/2, dot_r + barrier_height + lead_height),
+        (-lead_width/2, dot_r + barrier_height + lead_height),
     ]
-
-    load_s = KleShape(ohm_layer, lead_points)
-
-    sd.add_element(load_s.get_copy())
-    sd.add_element(load_s.get_copy().move(
-        0, -2 * DOT_R - BARRIER_WIDTH * 2 + BARRIER_OVERLAP * 2 - LEAD_HEIGHT + LEAD_OVERLAP * 2 - 0.001
+    lead = create_shape(ohm_layer, lead_points)
+    dot.add_element(lead.get_copy())
+    dot.add_element(lead.get_copy().move(
+        0, -2 * dot_r - barrier_height * 2 - lead_height
     ))
     
-    return sd
+    return dot
+
+
+def get_andreev_dot_with_loop(
+    ohm_layer, gate_0_layer, gate_1_layer,
+    loop_width=0.8, loop_area=2,
+    bias_x=0, bias_y=0, dot_r=0.075,
+    barrier_height=0.04, barrer_width=0.15,
+    lead_height=0.1, lead_width=0.085
+    # TODO FIX ME
+):
+    dot = get_dot_with_leads(
+        ohm_layer, gate_0_layer, gate_1_layer,
+        bias_x, bias_y, dot_r,
+        barrier_height, barrer_width,
+        lead_height, lead_width
+    )
+
+    loop_height = loop_area / loop_width
+    loop_top_offset = dot_r + barrier_height + lead_height
+    loop_points = [
+        (-lead_width/2, 0),
+        (lead_width/2, 0),
+        (lead_width/2, loop_height/2 - loop_top_offset),
+        (lead_width/2 + loop_width, loop_height/2 - loop_top_offset),
+        (lead_width/2 + loop_width, -loop_top_offset),
+
+        (lead_width/2 + loop_width + lead_width, -loop_top_offset),
+        (lead_width/2 + loop_width + lead_width, loop_height/2 - loop_top_offset + lead_width),
+        (-lead_width/2, loop_height/2 - loop_top_offset + lead_width)
+    ]
+    half_loop = create_shape(ohm_layer, loop_points)
+
+    dot.add_element(half_loop.get_copy().move(0, dot_r + barrier_height + lead_height))
+    dot.add_element(half_loop.get_copy().flip_vertically().move(0, -(dot_r + barrier_height + lead_height)))
+    
+
+    return dot

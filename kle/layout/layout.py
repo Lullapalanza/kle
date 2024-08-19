@@ -1,39 +1,50 @@
 import copy
 import klayout.db as pya
+from typing import Optional, Any
+from dataclasses import dataclass
 
 LAYOUT_DBU = 0.001 # 1 nm
 
+@dataclass
 class KleLayer:
-    def __init__(self, name, polarity, layer, layer_base=None):
-        self.name = name
-        self.polarity = polarity
-        self.layer = layer
-        self.layer_base = layer_base
+    name: str
+    polarity: int
+    layer: int
+    layer_base: Optional[pya.Polygon] = None
 
 
+@dataclass
 class KleShape:
-    """
-    Shape with layer
-    """
-    def __init__(self, layer, points):
-        self.layer = layer
-        self.points = points
+    layer: KleLayer
+    points: list[tuple[float]]
+    origin: tuple[float]
 
     def build_to_cell(self, target_cell):
         if self.layer.polarity == 1:
             target_cell.shapes(self.layer.layer).insert(
-                pya.Polygon([pya.Point(x / LAYOUT_DBU, y / LAYOUT_DBU) for x, y in self.points])
+                pya.Polygon([
+                    pya.Point((x+self.origin[0]) / LAYOUT_DBU, (y+self.origin[1]) / LAYOUT_DBU) for x, y in self.points
+                ])
             )
         elif self.layer.polarity == -1:
             self.layer.layer_base.insert_hole(
-                [pya.Point(x / LAYOUT_DBU, y / LAYOUT_DBU) for x, y in self.points]
+                [pya.Point((x+self.origin[0]) / LAYOUT_DBU, (y+self.origin[1]) / LAYOUT_DBU) for x, y in self.points]
             )
 
+    def update_origin(self, new_origin):
+        self.points = [
+            (
+                p[0] - new_origin[0] + self.origin[0],
+                p[1] - new_origin[1] + self.origin[1]
+            ) for p in self.points
+        ]
+        self.origin = new_origin
+
     def get_copy(self):
-        return KleShape(self.layer, copy.deepcopy(self.points))
+        return KleShape(self.layer, copy.deepcopy(self.points), self.origin)
 
     def move(self, delta_x, delta_y):
-        self.points = [(x+delta_x, y+delta_y) for x, y in self.points]
+        self.origin = (self.origin[0] + delta_x, self.origin[1] + delta_y)
         return self
 
     def flip_vertically(self):
@@ -45,16 +56,18 @@ class KleShape:
         return self
 
     def rotate_left(self):
-        self.points = [(y, x) for x, y in self.points]
+        self.points = [(-y, x) for x, y in self.points]
         return self
 
-    # def rotate_left(self):
-    #     self._polygon.transform(pya.DTrans(1))
-    #     return self
+    def rotate_right(self):
+        self.points = [(y, -x) for x, y in self.points]
+        return self
 
-    # def rotate_right(self):
-    #     self._polygon.transform(pya.DTrans(-1))
-    #     return self
+def create_shape(layer, points, origin=None):
+    origin = origin or (0, 0)
+    points = [(p[0]-origin[0], p[1]-origin[1]) for p in points]
+    return KleShape(layer, points, origin)
+
 
 class KleLayoutElement:
     """
@@ -63,8 +76,17 @@ class KleLayoutElement:
     def __init__(self, name):
         self.name = name
         self.subelements = []
+        self.origin = None
+
+    def update_origin(self, new_origin):
+        self.origin = new_origin
+        for se in self.subelements:
+            se.update_origin(new_origin)
+        return self
 
     def add_element(self, subelement):
+        self.origin = self.origin or subelement.origin
+        subelement.update_origin(self.origin)
         self.subelements.append(subelement)
 
     def build_to_cell(self, target_cell):
@@ -73,6 +95,16 @@ class KleLayoutElement:
 
     def move(self, x, y):
         [subelem.move(x, y) for subelem in self.subelements]
+        return self
+
+    def rotate_right(self):
+        for se in self.subelements:
+            se.rotate_right()
+        return self
+
+    def rotate_left(self):
+        for se in self.subelements:
+            se.rotate_left()
         return self
 
     def flip_horizontally(self):
