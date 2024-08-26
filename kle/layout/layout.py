@@ -174,5 +174,9 @@ class KleLayout:
                     kle_layer.layer
                 ).insert(kle_layer.layer_base)
 
-    def save_gds(self, file_path):
+    def save(self, file_path):
         self.layout.write(file_path)
+
+    def build_to_file(self, file_path):
+        self.build()
+        self.save(file_path)

@@ -1,6 +1,3 @@
-"""
-Ansys test file
-"""
 from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape
 from kle.layout.dot_elements import (
     get_circle_points,
@@ -314,5 +311,4 @@ layout.add_element(
     get_dad_quadrant(layers["O_3"], layers["G0_3"], layers["G1_3"], layers["SL_3"], (3925, 2025))
 )
 
-layout.build()
-layout.save_gds("C:/Users/nbr720/Documents/PhD/design/gds_files/AQ00_20240815.dxf")
+layout.build_to_file("C:/Users/nbr720/Documents/PhD/design/design_files/AQ00_test_20240826.dxf")

@@ -1,9 +1,52 @@
 import math
-from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape
+from kle.layout.layout import KleLayout, KleLayer, KleLayoutElement, KleShape, create_shape
 
 
-def get_circle_points(r, n_pts=50):
+def get_circle_points(r: float, n_pts: int = 50) -> list[tuple[float]]:
+    """
+    get [(x, y), ...] points for a circle originating at 0, 0 
+    """
     return [(math.cos(2*math.pi/n_pts*x)*r,math.sin(2*math.pi/n_pts*x)*r) for x in range(0,n_pts+1)]
+
+
+def get_Lazar_global_markers(global_marker_layer: KleLayer) -> KleLayoutElement:
+    """
+    Get marker layout based on Lazar 6x6 chip
+    """
+    global_markers = KleLayoutElement("Gloabl markers")
+
+    marker_cross = KleLayoutElement("Marker Cross")
+    # Make large arm
+    cross_arm_shape = create_shape(
+    global_marker_layer, [(0, -2.5), (84, -2.5), (84, 2.5), (0, 2.5)])
+    marker_cross.add_element(cross_arm_shape.get_copy())
+    marker_cross.add_element(cross_arm_shape.get_copy().move(96, 0))
+    marker_cross.add_element(cross_arm_shape.get_copy().rotate_left().move(90, 6))
+    marker_cross.add_element(cross_arm_shape.rotate_left().move(90, -90))
+
+    # Add smaller center arm
+    small_arm_shape = create_shape(global_marker_layer, [(-5, -0.25), (5, -0.25), (5, 0.25), (-5, 0.25)])
+    marker_cross.add_element(small_arm_shape.get_copy().move(90, 0))
+    marker_cross.add_element(small_arm_shape.rotate_left().move(90, 0))
+
+    # Make one corner
+    marker_quadrant = KleLayoutElement("Marker Corner")
+    for i in range(5):
+        marker_quadrant.add_element(marker_cross.get_copy().move(200 * i, 0))
+
+    for i in range(1, 5):
+        marker_quadrant.add_element(marker_cross.get_copy().move(0, 200 * i))
+
+    marker_quadrant.update_origin((90, 0)).move(-90, 0)
+
+    # Add 4 marker quadrants
+    global_markers.add_element(marker_quadrant.get_copy().rotate_right().move(600, 5400))
+    global_markers.add_element(marker_quadrant.get_copy().rotate_right().rotate_right().move(5400, 5400))
+    global_markers.add_element(marker_quadrant.get_copy().rotate_left().move(5400, 600))
+    global_markers.add_element(marker_quadrant.move(600, 600))
+
+    return global_markers
+
 
 def get_dot_with_leads(
     ohm_layer, gate_0_layer, gate_1_layer,
