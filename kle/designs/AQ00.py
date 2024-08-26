@@ -377,9 +377,4 @@ layout.add_element(
     get_dad_quadrant(layers["OHMICS4"], layers["GATES4"], layers["CG4"], layers["SL4"], (3925, 2025))
 )
 
-<<<<<<< Updated upstream
 layout.build_to_file("C:/Users/nbr720/Documents/PhD/design/design_files/AQ00_test_20240826.dxf")
-=======
-layout.build()
-layout.save_gds("C:/Users/nbr720/Documents/PhD/design/gds_files/AQ00_20240821.dxf")
->>>>>>> Stashed changes
