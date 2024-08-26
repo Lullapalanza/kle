@@ -68,6 +68,13 @@ def get_dot_with_leads(
         (0, -plunger_height/2 -bias_y), (0, plunger_height/2 +bias_y),
         (-plnger_width -bias_x, plunger_height/2 +bias_y), (-plnger_width -bias_x, -plunger_height/2 -bias_y)
     ]).rotate_by_angle(plunger_rotation))
+    dot.add_element(create_shape(gate_1_layer, [
+        (-dot_r - 0.05 + bias_x, plunger_height/2 + bias_y + 0.005),
+        (-dot_r - 0.05 + bias_x - 0.05, plunger_height/2 + bias_y + 0.005),
+        (-dot_r - 0.05 + bias_x - 0.05, -plunger_height/2 - bias_y - 0.005),
+        (-dot_r - 0.05 + bias_x, -plunger_height/2 - bias_y - 0.005),
+    ]
+    ).rotate_by_angle(plunger_rotation))
 
     # Add barrier up and below
     barrier_points = [

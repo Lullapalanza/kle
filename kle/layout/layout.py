@@ -120,6 +120,10 @@ class KleLayoutElement:
         [subelem.flip_horizontally() for subelem in self.subelements]
         return self
 
+    def flip_vertically(self):
+        [subelem.flip_vertically() for subelem in self.subelements]
+        return self
+
     def get_copy(self):
         copy = KleLayoutElement(self.name)
         for e in self.subelements:

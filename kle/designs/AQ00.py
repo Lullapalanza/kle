@@ -6,21 +6,23 @@ from kle.layout.dot_elements import (
 )
 
 
-LA_LAYERS = ["M", "G0", "G1", "O", "SL"] # Local alignment layers, gate, ohmics
+LA_LAYERS = [
+    "M", "GATES", "CG", "OHMICS", "SL"
+] # Local alignment layers, gate, ohmics
 def get_layers_for_la(id):
     """
     layer names for local alignment
     """
     return [
-        f"{la_layer}_{id}" for la_layer in LA_LAYERS
+        f"{la_layer}{id + 1 if id > 0 else ''}" for la_layer in LA_LAYERS
     ]
 
 LAYER_NAMES = [
     "-CHIP",
     "MARKERS",
-    "OC",
-    "B0C", # Barriers Corse
-    "B1C", # Barriers Corse
+    "OHMIC_COURSE",
+    "DOTS_COURSE", # Barriers Corse
+    "BARRIERS_COURSE", # Barriers Corse
     "TS_B", # Test structure barrier
     "TS_G", # TS gate
     "TS_O", # TS ohmics
@@ -86,27 +88,42 @@ def create_bond_pads_for_quadrant(layer):
         (-width/2, height/2)
     ])
 
-    for i in range(9):
-        bond_pads.add_element(pad.get_copy().move(i*spacing, 0))
-        bond_pads.add_element(pad.get_copy().move(i*spacing, -1680))
-        
-    for i in range(7):
-        bond_pads.add_element(pad.get_copy().move(0, -(i+1) * spacing))
-        bond_pads.add_element(pad.get_copy().move(1680, -(i+1) * spacing))
-        
-    bond_pads.move(-1680/2, 1680/2)
+    connection_larger_width = 30
+    connection_smaller_width = 4
+    spacing_small = 16
+    tot_small_width = 176 - 32
 
-    return bond_pads
+    for i in range(1, 9):
+        bond_pads.add_element(pad.get_copy().move(i*spacing, 0))
+        bond_pads.add_element(
+            create_shape(layer, [
+                (i*spacing - connection_larger_width/2, -height/2),
+                (i*spacing + connection_larger_width/2, -height/2),
+                (1890/2 - tot_small_width/2 + i*spacing_small + connection_smaller_width/2, -930 + height/2),
+                (1890/2 - tot_small_width/2 +  i*spacing_small, -930 + height/2 - 2),
+                (1890/2 - tot_small_width/2 + i*spacing_small - connection_smaller_width/2, -930 + height/2),
+            ])
+        )
+    bond_pads.update_origin((1890/2, -1890/2))
+    bond_pads.move(-1890/2, 1890/2)
+
+    all_sides = KleLayoutElement("All sides")
+    all_sides.add_element(bond_pads.get_copy())
+    all_sides.add_element(bond_pads.get_copy().rotate_right())
+    all_sides.add_element(bond_pads.get_copy().rotate_left())
+    all_sides.add_element(bond_pads.get_copy().rotate_right().rotate_right())
+
+    return all_sides
 # ==== END BOND PADS ====
 
 
 
 # ==== LOCAL MARKERS FOR 4 QUADRANTS ====
 lm_l_pos = [
-    ("M_0", 1775, 4175),
-    ("M_1", 3925, 4175),
-    ("M_2", 1775, 2025),
-    ("M_3", 3925, 2025),
+    ("M", 1775, 4175),
+    ("M2", 3925, 4175),
+    ("M3", 1775, 2025),
+    ("M4", 3925, 2025),
 ]
 
 for l, x, y in lm_l_pos:
@@ -128,9 +145,21 @@ for l, x, y in lm_l_pos:
         lm.add_element(lms.get_copy().move(*p))
     layout.add_element(lm.move(x, y))
     
-    layout.add_element(create_bond_pads_for_quadrant(layers["OC"]).move(x+150, y-150))
+    layout.add_element(create_bond_pads_for_quadrant(layers["OHMIC_COURSE"]).move(x+150, y-150))
 # ==== END LOCAL MARKERS ====
 
+
+
+bias_x=-0.005
+bias_y=-0.005
+barrier_points = [
+    (0 - bias_x, -0.060 - bias_y),
+    (0.05 + bias_x, -0.060 - bias_y),
+    (0.05 + bias_x, 0.060 + bias_y), 
+    (0 - bias_x, 0.060 + bias_y)
+]
+dot_shift = 0.065
+barrier_shift = (dot_shift - 0.05)/2
 
 # The device is split into 4
 # 1st and second are double devices with different dot size with and without loop
@@ -139,53 +168,69 @@ for l, x, y in lm_l_pos:
 def get_charge_sensed_ad(r_cs, r_ad):
     CS_AD = KleLayoutElement("charge sensed Andreev Dot")
     CS_AD.add_element(get_dot_with_leads(
-        layers["O_0"],
-        layers["G0_0"],
-        layers["G1_0"],
+        layers["OHMICS"],
+        layers["GATES"],
+        layers["CG"],
         dot_r=r_cs,
         bias_x=-0.005,
         bias_y=-0.005,
+        barrier_height=0.05
     ))
     CS_AD.add_element(get_andreev_dot_with_loop(
-        layers["O_0"],
-        layers["G0_0"],
-        layers["G1_0"],
+        layers["OHMICS"],
+        layers["GATES"],
+        layers["CG"],
         dot_r=r_ad,
         top_lead_rotation=45,
-        loop_area=100,
-        loop_width=8,
+        loop_area=200,
+        loop_width=20,
         bias_x=-0.005,
         bias_y=-0.005,
-        plunger_rotation=73
-    ).move(r_cs + r_ad + 0.055, 0))
-    barrier = create_shape(layers["G1_0"], [(0, -0.060), (0.04, -0.060), (0.04, 0.060), (0, 0.060)])
-    CS_AD.add_element(barrier.move(r_cs + 0.0075, 0))
+        plunger_rotation=73,
+        barrier_height=0.05
+    ).move(r_cs + r_ad + dot_shift, 0))
+    barrier = create_shape(layers["CG"], barrier_points)
+    CS_AD.add_element(barrier.move(r_cs + barrier_shift, 0))
     return CS_AD
 
 
 first_quadrant = KleLayoutElement("first quadrant")
 
-right_side = get_charge_sensed_ad(0.175/2, 0.2/2)
-first_quadrant.add_element(right_side)
+SL_WIDTH = 0.5
+mirror_shift = 20 + 0.5
+up_shift = 10 + 0.17 + SL_WIDTH + 0.2
 
-left_side = get_charge_sensed_ad(0.175/2, 0.25/2)
+right_side = get_charge_sensed_ad(0.175/2, 0.175/2)
+first_quadrant.move(0, up_shift).add_element(right_side)
+
+left_side = get_charge_sensed_ad(0.175/2, 0.2/2)
 first_quadrant.add_element(
-    left_side.move(9*2 + 0.025 - 0.56, 0).flip_horizontally()
+    left_side.move(mirror_shift, -up_shift).flip_horizontally().flip_vertically()
 )
 
-first_quadrant.update_origin((9 - 0.28, 0))
-first_quadrant.move(-9 + 0.28, 0)
+first_quadrant.move(-mirror_shift/2, up_shift/2)
 
 # Add stripline
-SL_HEIGHT = 50
-SL_WIDTH = 0.5
-stripline = create_shape(layers["SL_0"], [
-    (-SL_WIDTH/2, -SL_HEIGHT/2),
-    (SL_WIDTH/2, -SL_HEIGHT/2),
-    (SL_WIDTH/2, SL_HEIGHT/2),
-    (-SL_WIDTH/2, SL_HEIGHT/2),
+SL_HEIGHT = 20 + 0.43 + SL_WIDTH*2
+stripline_middle = create_shape(layers["SL"], [
+    (-SL_HEIGHT/2, -SL_WIDTH/2),
+    (SL_HEIGHT/2, -SL_WIDTH/2),
+    (SL_HEIGHT/2, SL_WIDTH/2),
+    (-SL_HEIGHT/2, SL_WIDTH/2),
 ])
-first_quadrant.add_element(stripline)
+
+first_quadrant.add_element(stripline_middle.get_copy())
+first_quadrant.add_element(stripline_middle.get_copy().move(0, up_shift))
+first_quadrant.add_element(stripline_middle.move(0, -up_shift))
+
+stripline_side = create_shape(layers["SL"], [
+    (-SL_WIDTH/2, -SL_WIDTH/2),
+    (SL_WIDTH/2, -SL_WIDTH/2),
+    (SL_WIDTH/2, SL_WIDTH/2 + up_shift),
+    (-SL_WIDTH/2, SL_WIDTH/2 + up_shift),
+])
+first_quadrant.add_element(stripline_side.get_copy().move(SL_HEIGHT/2 - SL_WIDTH/2, 0))
+first_quadrant.add_element(stripline_side.flip_vertically().move(-SL_HEIGHT/2 + SL_WIDTH/2, 0))
 
 first_quadrant.move(1775 + 150, 4175 - 150)
 layout.add_element(first_quadrant)
@@ -197,34 +242,36 @@ layout.add_element(first_quadrant)
 def get_double_junction(r_cs, r_ad):
     double_junction = KleLayoutElement("double junction")
     double_junction.add_element(get_dot_with_leads(
-        layers["O_1"],
-        layers["G0_1"],
-        layers["G1_1"],
+        layers["OHMICS2"],
+        layers["GATES2"],
+        layers["CG2"],
         dot_r=r_cs,
         bias_x=-0.005,
         bias_y=-0.005,
+        barrier_height=0.05
     ))
     AD_R = 0.2/2
     double_junction.add_element(get_dot_with_leads(
-        layers["O_1"],
-        layers["G0_1"],
-        layers["G1_1"],
+        layers["OHMICS2"],
+        layers["GATES2"],
+        layers["CG2"],
         bias_x=-0.005,
         bias_y=-0.005,
         dot_r=r_ad,
-        plunger_rotation=180
-    ).move(r_cs + r_ad + 0.055, 0))
-    barrier = create_shape(layers["G1_1"], [(0, -0.060), (0.04, -0.060), (0.04, 0.060), (0, 0.060)])
-    double_junction.add_element(barrier.get_copy().move(r_cs + 0.0075, 0))
+        plunger_rotation=180,
+        barrier_height=0.05
+    ).move(r_cs + r_ad + dot_shift, 0))
+    barrier = create_shape(layers["CG2"], barrier_points)
+    double_junction.add_element(barrier.get_copy().move(r_cs + barrier_shift, 0))
 
     return double_junction
 
 second_quadrant = KleLayoutElement("second quadrant")
 
-left_side = get_double_junction(0.175/2, 0.2/2)
+left_side = get_double_junction(0.175/2, 0.175/2)
 second_quadrant.add_element(left_side)
 
-right_side = get_double_junction(0.175/2, 0.25/2)
+right_side = get_double_junction(0.175/2, 0.2/2)
 second_quadrant.add_element(right_side.flip_horizontally().move(2, 0))
 
 second_quadrant.update_origin((1, 0))
@@ -248,35 +295,43 @@ def get_charge_sensed_dad(ohm_layer, gate_0_layer, gate_1_layer, r_cs, r_ad, dot
         dot_r=r_cs,
         bias_x=-0.005,
         bias_y=-0.005,
+        barrier_height=0.05
     ))
 
     # Make dot
     CS_AD.add_element(create_shape(
         gate_0_layer, get_circle_points(dot_r)
-    ).move(r_cs + dot_r + 0.055, 0))
-    barrier = create_shape(gate_1_layer, [(0, -0.060), (0.04, -0.060), (0.04, 0.060), (0, 0.060)])
-    CS_AD.add_element(barrier.get_copy().move(r_cs + 0.0075, 0))
+    ).move(r_cs + dot_r + dot_shift, 0))
+    barrier = create_shape(gate_1_layer, barrier_points)
+    CS_AD.add_element(barrier.get_copy().move(r_cs + barrier_shift, 0))
 
     CS_AD.add_element(get_andreev_dot_with_loop(
         ohm_layer, gate_0_layer, gate_1_layer,
         dot_r=r_ad,
         top_lead_rotation=45,
-        loop_area=100,
-        loop_width=8,
+        loop_area=200,
+        loop_width=20,
         bias_x=-0.005,
         bias_y=-0.005,
-        plunger_rotation=73
-    ).move(r_cs + dot_r * 2 + r_ad + 0.055 * 2, 0))
+        plunger_rotation=73,
+        barrier_height=0.05
+    ).move(r_cs + dot_r * 2 + r_ad + dot_shift * 2, 0))
 
-    barrier = create_shape(gate_1_layer, [(0, -0.060), (0.04, -0.060), (0.04, 0.060), (0, 0.060)])
-    CS_AD.add_element(barrier.get_copy().move(r_cs + 0.063 + dot_r * 2, 0))
+    barrier = create_shape(gate_1_layer, barrier_points)
+    CS_AD.add_element(barrier.get_copy().move(r_cs + dot_shift + barrier_shift + dot_r * 2, 0))
     return CS_AD
 
 def get_dad_quadrant(ohm_layer, gate_0_layer, gate_1_layer, stripline_layer, position):
     quadrant = KleLayoutElement("quadrant")
+
+    
+    SL_WIDTH = 0.5
+    mirror_shift = 20 + 0.5
+    up_shift = 10 + 0.17 + SL_WIDTH + 0.2
+
     
     quadrant.add_element(get_charge_sensed_dad(
-        ohm_layer, gate_0_layer, gate_1_layer, 0.175/2, 0.2/2
+        ohm_layer, gate_0_layer, gate_1_layer, 0.175/2, 0.175/2
     ))
 
     right_side = get_charge_sensed_dad(
@@ -284,31 +339,47 @@ def get_dad_quadrant(ohm_layer, gate_0_layer, gate_1_layer, stripline_layer, pos
     )
 
     quadrant.add_element(
-        right_side.move(9.2*2 + 0.025 - 0.56, 0).flip_horizontally()
+        right_side.move(mirror_shift, -up_shift).flip_horizontally().flip_vertically()
     )
 
-    quadrant.update_origin((9.2 - 0.28, 0))
-    quadrant.move(-9.2 + 0.28, 0)
+    quadrant.move(-mirror_shift/2, up_shift/2)
 
     # Add stripline
-    SL_HEIGHT = 50
-    SL_WIDTH = 0.5
-    stripline = create_shape(layers["SL_0"], [
-        (-SL_WIDTH/2, -SL_HEIGHT/2),
-        (SL_WIDTH/2, -SL_HEIGHT/2),
-        (SL_WIDTH/2, SL_HEIGHT/2),
-        (-SL_WIDTH/2, SL_HEIGHT/2),
+    SL_HEIGHT = 20 + SL_WIDTH*2 + 0.632 + 0.132
+    stripline_middle = create_shape(layers["SL"], [
+        (-SL_HEIGHT/2, -SL_WIDTH/2),
+        (SL_HEIGHT/2, -SL_WIDTH/2),
+        (SL_HEIGHT/2, SL_WIDTH/2),
+        (-SL_HEIGHT/2, SL_WIDTH/2),
     ])
-    quadrant.add_element(stripline)
+
+    quadrant.add_element(stripline_middle.get_copy())
+    quadrant.add_element(stripline_middle.get_copy().move(0, up_shift))
+    quadrant.add_element(stripline_middle.move(0, -up_shift))
+
+    stripline_side = create_shape(layers["SL"], [
+        (-SL_WIDTH/2, -SL_WIDTH/2),
+        (SL_WIDTH/2, -SL_WIDTH/2),
+        (SL_WIDTH/2, SL_WIDTH/2 + up_shift),
+        (-SL_WIDTH/2, SL_WIDTH/2 + up_shift),
+    ])
+    quadrant.add_element(stripline_side.get_copy().move(SL_HEIGHT/2 - SL_WIDTH/2, 0))
+    quadrant.add_element(stripline_side.flip_vertically().move(-SL_HEIGHT/2 + SL_WIDTH/2, 0))
+
     quadrant.move(position[0] + 150, position[1] - 150)
 
     return quadrant
 
 layout.add_element(
-    get_dad_quadrant(layers["O_2"], layers["G0_2"], layers["G1_2"], layers["SL_2"], (1775, 2025))
+    get_dad_quadrant(layers["OHMICS3"], layers["GATES3"], layers["CG3"], layers["SL3"], (1775, 2025))
 )
 layout.add_element(
-    get_dad_quadrant(layers["O_3"], layers["G0_3"], layers["G1_3"], layers["SL_3"], (3925, 2025))
+    get_dad_quadrant(layers["OHMICS4"], layers["GATES4"], layers["CG4"], layers["SL4"], (3925, 2025))
 )
 
+<<<<<<< Updated upstream
 layout.build_to_file("C:/Users/nbr720/Documents/PhD/design/design_files/AQ00_test_20240826.dxf")
+=======
+layout.build()
+layout.save_gds("C:/Users/nbr720/Documents/PhD/design/gds_files/AQ00_20240821.dxf")
+>>>>>>> Stashed changes
