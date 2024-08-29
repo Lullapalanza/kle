@@ -6,6 +6,16 @@ from dataclasses import dataclass
 
 LAYOUT_DBU = 0.001 # 1 nm
 
+
+@dataclass
+class KleElementOrigin:
+    x: float
+    y: float
+
+    def copy(self):
+        return KleElementOrigin(self.x, self.y)
+
+
 @dataclass
 class KleLayer:
     name: str
@@ -18,42 +28,61 @@ class KleLayer:
 class KleShape:
     layer: KleLayer
     points: list[tuple[float]]
-    origin: tuple[float]
+    origin: KleElementOrigin
+    holding_origin: bool
+    bot_left: tuple[float]
+    top_right: tuple[float]
 
     def build_to_cell(self, target_cell):
         if self.layer.polarity == 1:
             target_cell.shapes(self.layer.layer).insert(
                 pya.Polygon([
-                    pya.Point((x+self.origin[0]) / LAYOUT_DBU, (y+self.origin[1]) / LAYOUT_DBU) for x, y in self.points
+                    pya.Point((x+self.origin.x) / LAYOUT_DBU, (y+self.origin.y) / LAYOUT_DBU) for x, y in self.points
                 ])
             )
         elif self.layer.polarity == -1:
             self.layer.layer_base.insert_hole(
-                [pya.Point((x+self.origin[0]) / LAYOUT_DBU, (y+self.origin[1]) / LAYOUT_DBU) for x, y in self.points]
+                [pya.Point((x+self.origin.x) / LAYOUT_DBU, (y+self.origin.y) / LAYOUT_DBU) for x, y in self.points]
             )
 
     def update_origin(self, new_origin):
         self.points = [
             (
-                p[0] - new_origin[0] + self.origin[0],
-                p[1] - new_origin[1] + self.origin[1]
+                p[0] - new_origin.x + self.origin.x,
+                p[1] - new_origin.y + self.origin.y
             ) for p in self.points
         ]
         self.origin = new_origin
+        self.holding_origin = False
 
     def get_copy(self):
-        return KleShape(self.layer, copy.deepcopy(self.points), self.origin)
+        return KleShape(
+            self.layer,
+            copy.deepcopy(self.points),
+            self.origin.copy(),
+            False,
+            copy.deepcopy(self.bot_left),
+            copy.deepcopy(self.top_right)
+        )
 
     def move(self, delta_x, delta_y):
-        self.origin = (self.origin[0] + delta_x, self.origin[1] + delta_y)
+        if self.holding_origin:
+            self.origin.x += delta_x
+            self.origin.y += delta_y
+        else:
+            self.points = [(x+delta_x, y+delta_y) for x, y in self.points]
         return self
 
     def flip_vertically(self):
         self.points = [(x, -y) for x, y in self.points]
+        self.bot_left = (self.bot_left[0], -self.top_right[1])
+        self.top_right = (self.top_right[0], -self.bot_left[1])
         return self
 
     def flip_horizontally(self):
         self.points = [(-x, y) for x, y in self.points]
+        self.bot_left = (-self.top_right[0], self.bot_left[1])
+        self.top_right = (-self.bot_left[0], self.top_right[1])
         return self
 
     def rotate_left(self):
@@ -72,10 +101,27 @@ class KleShape:
         ) for x, y in self.points]
         return self
 
+    def get_bounding_box(self):
+        return (
+            (self.bot_left[0], self.bot_left[1]),
+            (self.top_right[0], self.top_right[1])
+        )
+
+    def __str__(self):
+        return f"{self.points}, {self.origin}, {self.holding_origin}"
+
+
 def create_shape(layer, points, origin=None):
-    origin = origin or (0, 0)
-    points = [(p[0]-origin[0], p[1]-origin[1]) for p in points]
-    return KleShape(layer, points, origin)
+    origin = origin or KleElementOrigin(0, 0)
+    points = [(p[0]-origin.x, p[1]-origin.y) for p in points]
+    
+    min_x = min([x for x, y in points])
+    max_x = max([x for x, y in points])
+    min_y = min([y for x, y in points])
+    max_y = max([y for x, y in points])
+    
+    new_shape = KleShape(layer, points, origin, True, (min_x, min_y), (max_x, max_y))
+    return new_shape
 
 
 class KleLayoutElement:
@@ -86,11 +132,18 @@ class KleLayoutElement:
         self.name = name
         self.subelements = []
         self.origin = None
+        self.holding_origin = True
 
     def update_origin(self, new_origin):
         self.origin = new_origin
+        self.holding_origin = False
         for se in self.subelements:
             se.update_origin(new_origin)
+        return self
+
+    def shift_origin(self, x, y):
+        self.origin.x += x
+        self.origin.y += y
         return self
 
     def add_element(self, subelement):
@@ -98,12 +151,18 @@ class KleLayoutElement:
         subelement.update_origin(self.origin)
         self.subelements.append(subelement)
 
+
     def build_to_cell(self, target_cell):
         for subelement in self.subelements:
             subelement.build_to_cell(target_cell)
 
     def move(self, x, y):
-        [subelem.move(x, y) for subelem in self.subelements]
+        if self.holding_origin:
+            self.origin.x += x
+            self.origin.y += y
+        else:
+            for se in self.subelements:
+                se.move(x, y)
         return self
 
     def rotate_right(self):
@@ -123,6 +182,29 @@ class KleLayoutElement:
     def flip_vertically(self):
         [subelem.flip_vertically() for subelem in self.subelements]
         return self
+
+    def get_bounding_box(self):
+        """
+        Return points corresponding to left bottom and top right bounds
+          /----(x, y)
+          |       |
+        (x, y)----/
+        """
+        bbox_left_x = []
+        bbox_left_y = []
+        bbox_right_x = []
+        bbox_right_y = []
+        for se in self.subelements:
+            bbox = se.get_bounding_box()
+            bbox_left_x.append(bbox[0][0])
+            bbox_left_y.append(bbox[0][1])
+            bbox_right_x.append(bbox[1][0])
+            bbox_right_y.append(bbox[1][1])
+
+        return (
+            (min(bbox_left_x) + self.origin.x, min(bbox_left_y) + self.origin.y),
+            (max(bbox_right_x) + self.origin.x, max(bbox_right_y) + self.origin.y),
+        )
 
     def get_copy(self):
         copy = KleLayoutElement(self.name)
@@ -159,7 +241,7 @@ class KleLayout:
                     ]]
                 )
                 self.layers[layer_name].layer_base = layer_base
-        
+
         self.elements_to_build = []
 
     def get_layers(self):

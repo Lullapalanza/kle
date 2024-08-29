@@ -18,11 +18,13 @@ def get_Lazar_global_markers(global_marker_layer: KleLayer) -> KleLayoutElement:
     marker_cross = KleLayoutElement("Marker Cross")
     # Make large arm
     cross_arm_shape = create_shape(
-    global_marker_layer, [(0, -2.5), (84, -2.5), (84, 2.5), (0, 2.5)])
+        global_marker_layer, [(0, -2.5), (84, -2.5), (84, 2.5), (0, 2.5)]
+    )
     marker_cross.add_element(cross_arm_shape.get_copy())
     marker_cross.add_element(cross_arm_shape.get_copy().move(96, 0))
     marker_cross.add_element(cross_arm_shape.get_copy().rotate_left().move(90, 6))
-    marker_cross.add_element(cross_arm_shape.rotate_left().move(90, -90))
+    marker_cross.add_element(cross_arm_shape.rotate_right().move(90, -6))
+
 
     # Add smaller center arm
     small_arm_shape = create_shape(global_marker_layer, [(-5, -0.25), (5, -0.25), (5, 0.25), (-5, 0.25)])
@@ -37,7 +39,7 @@ def get_Lazar_global_markers(global_marker_layer: KleLayer) -> KleLayoutElement:
     for i in range(1, 5):
         marker_quadrant.add_element(marker_cross.get_copy().move(0, 200 * i))
 
-    marker_quadrant.update_origin((90, 0)).move(-90, 0)
+    marker_quadrant.shift_origin(90, 0).move(-90, 0)
 
     # Add 4 marker quadrants
     global_markers.add_element(marker_quadrant.get_copy().rotate_right().move(600, 5400))
