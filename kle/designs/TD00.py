@@ -148,6 +148,13 @@ first_quadrant.add_element(
 first_quadrant.move(-mirror_shift/2, up_shift/2)
 first_quadrant.move(1775 + 150, 4175 - 150)
 
-
 layout.add_element(first_quadrant)
+
+
+from klayout.db import DText, DTrans
+
+txt = DText("Hello", 0, 0)
+layout.main_cell.shapes(1).insert(txt)
+
+
 layout.build_to_file("C:/Users/nbr720/Documents/PhD/design/design_files/TD00.dxf")
