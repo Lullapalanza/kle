@@ -1,5 +1,6 @@
 import math
 from kle.layout.layout import KleLayout, KleLayer, KleLayoutElement, KleShape, create_shape
+from kle.layout.layout_connections import get_polygon_with_connection
 
 
 def get_circle_points(r: float, n_pts: int = 50) -> list[tuple[float]]:
@@ -13,9 +14,9 @@ def get_Lazar_global_markers(global_marker_layer: KleLayer) -> KleLayoutElement:
     """
     Get marker layout based on Lazar 6x6 chip
     """
-    global_markers = KleLayoutElement("Gloabl markers")
+    global_markers = KleLayoutElement()
 
-    marker_cross = KleLayoutElement("Marker Cross")
+    marker_cross = KleLayoutElement()
     # Make large arm
     cross_arm_shape = create_shape(
         global_marker_layer, [(0, -2.5), (84, -2.5), (84, 2.5), (0, 2.5)]
@@ -32,14 +33,14 @@ def get_Lazar_global_markers(global_marker_layer: KleLayer) -> KleLayoutElement:
     marker_cross.add_element(small_arm_shape.rotate_left().move(90, 0))
 
     # Make one corner
-    marker_quadrant = KleLayoutElement("Marker Corner")
+    marker_quadrant = KleLayoutElement()
     for i in range(5):
         marker_quadrant.add_element(marker_cross.get_copy().move(200 * i, 0))
 
     for i in range(1, 5):
         marker_quadrant.add_element(marker_cross.get_copy().move(0, 200 * i))
 
-    marker_quadrant.shift_origin(90, 0).move(-90, 0)
+    # marker_quadrant.shift_origin(90, 0).move(-90, 0)
 
     # Add 4 marker quadrants
     global_markers.add_element(marker_quadrant.get_copy().rotate_right().move(600, 5400))
@@ -51,7 +52,7 @@ def get_Lazar_global_markers(global_marker_layer: KleLayer) -> KleLayoutElement:
 
 
 def get_dot_with_leads(
-    ohm_layer, gate_0_layer, gate_1_layer,
+    ohm_layer, gate_0_layer, gate_1_layer, annotation_layer,
     bias_x=0.0, bias_y=0.0, dot_r=0.075,
     barrier_height=0.04, barrer_width=0.15,
     lead_height=0.1, lead_width=0.085, # This is not great, need to figure out how to reduce this
@@ -59,7 +60,7 @@ def get_dot_with_leads(
     plunger_rotation=0,
     # to managable amounds TODO
 ):
-    dot = KleLayoutElement("dit")
+    dot = KleLayoutElement()
 
     plunger_height = 0.05
     plnger_width = 0.2
@@ -92,27 +93,35 @@ def get_dot_with_leads(
     ))
 
     # Add Leads
-    lead_points = [
-        (-lead_width/2 - bias_x, dot_r + barrier_height - bias_y),
-        (lead_width/2 + bias_x, dot_r + barrier_height - bias_y),
-        (lead_width/2 + bias_x, dot_r + barrier_height + lead_height),
-        (-lead_width/2 - bias_x, dot_r + barrier_height + lead_height),
-    ]
-    lead = create_shape(ohm_layer, lead_points)
-    top_lead = lead.get_copy()
-    bot_lead = lead.get_copy()
+    # lead_points = [
+    #     (-lead_width/2 - bias_x, dot_r + barrier_height - bias_y),
+    #     (lead_width/2 + bias_x, dot_r + barrier_height - bias_y),
+    #     (lead_width/2 + bias_x, dot_r + barrier_height + lead_height),
+    #     (-lead_width/2 - bias_x, dot_r + barrier_height + lead_height),
+    # ]
+    # lead = create_shape(ohm_layer, lead_points)
+    
+    top_lead = get_polygon_with_connection(
+        ohm_layer, annotation_layer, "PL0",
+        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 0.2],
+        connection_width=lead_width, connection_height=lead_height
+    )
+    bot_lead = get_polygon_with_connection(
+        ohm_layer, annotation_layer, "PL1",
+        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 0.2],
+        connection_width=lead_width, connection_height=lead_height
+    )
 
-    dot.add_element(top_lead)
-    top_lead.rotate_by_angle(top_lead_rotation)
+    # dot.add_element(top_lead)
+    # top_lead.rotate_by_angle(top_lead_rotation)
     
-    dot.add_element(bot_lead)
-    bot_lead.flip_vertically()
+    dot.add_element(bot_lead.rotate_by_angle(180))
     
-    return dot
+    return dot, bot_lead.connection
 
 
 def get_andreev_dot_with_loop(
-    ohm_layer, gate_0_layer, gate_1_layer,
+    ohm_layer, gate_0_layer, gate_1_layer, annotation_layer,
     loop_width=0.8, loop_area=2,
     bias_x=0, bias_y=0, dot_r=0.075,
     barrier_height=0.04, barrer_width=0.15,
@@ -121,8 +130,8 @@ def get_andreev_dot_with_loop(
     plunger_rotation=0
     # TODO FIX ME
 ):
-    dot = get_dot_with_leads(
-        ohm_layer, gate_0_layer, gate_1_layer,
+    dot, connection = get_dot_with_leads(
+        ohm_layer, gate_0_layer, gate_1_layer, annotation_layer,
         bias_x, bias_y, dot_r,
         barrier_height, barrer_width,
         lead_height, lead_width,
@@ -149,4 +158,4 @@ def get_andreev_dot_with_loop(
     dot.add_element(half_loop.get_copy().flip_vertically().move(0, -(dot_r + barrier_height + lead_height)))
     
 
-    return dot
+    return dot, connection

@@ -63,7 +63,7 @@ class KlePoint:
     def get_tuple(self):
         return (self.x, self.y)
 
-    def __str__(self):
+    def __repr__(self):
         return f"x: {self.x}, y {self.y}"
 
 
