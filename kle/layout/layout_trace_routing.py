@@ -7,30 +7,37 @@ from kle.layout.layout_path_routing import (
 )
 
 
-def get_routed_trace(layer, path, width=0.7, radii=0.1, phi_step=0.5):
+def get_routed_trace(layer, path, width_start=0.7, width_end=1, radii=0.5, phi_step=0.5):
     trace = KleLayoutElement()
 
+    # Make a smooth path
     path = smooth_path([
         KlePoint(x, y) for x, y in path
     ], radii, phi_step)
+    path_len = get_distance(path)
+
 
     hull = []
+    curr_len = 0
     for i, klepoint in enumerate(path[:-1]):
         direction = get_vector_between_points(klepoint, path[i+1])
         perp = direction.get_unit().get_perp()
 
+        _width = width_start + (width_end - width_start) * curr_len / path_len
         hull.append(
-            (klepoint + perp * width/2).get_tuple()
+            (klepoint + perp * _width/2).get_tuple()
         )
         hull.insert(0,
-            (klepoint - perp * width/2).get_tuple()
+            (klepoint - perp * _width/2).get_tuple()
         )
 
+        curr_len += direction.get_length()
+
     hull.append(
-        (path[-1] + perp * width/2).get_tuple()
+        (path[-1] + perp * width_end/2).get_tuple()
     )
     hull.insert(0,
-        (path[-1] - perp * width/2).get_tuple()
+        (path[-1] - perp * width_end/2).get_tuple()
     )
 
     trace.add_element(create_shape(

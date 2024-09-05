@@ -84,6 +84,8 @@ class KleLayerPoints:
             ) for p in self.points
         ]
 
+    def change_layer(self, new_layer):
+        self.layer = new_layer
 
 @dataclass
 class KleAnnotation(KleLayerPoints):
@@ -112,9 +114,6 @@ def create_annotation(layer, text, x, y):
 
 @dataclass
 class KleShape(KleLayerPoints):
-    # bot_left: tuple[float] # Bounding boxes bot_left point and top_right point
-    # top_right: tuple[float]
-
     def build_to_cell(self, target_cell):
         if self.layer.polarity == 1:
             target_cell.shapes(self.layer.layer).insert(
@@ -133,41 +132,14 @@ class KleShape(KleLayerPoints):
             copy.deepcopy(self.points),
             self.origin.copy(),
             False,
-            # copy.deepcopy(self.bot_left),
-            # copy.deepcopy(self.top_right)
         )
-    
-    # def flip_vertically(self):
-    #     self.points = [(x, -y) for x, y in self.points]
-    #     self.bot_left = (self.bot_left[0], -self.top_right[1])
-    #     self.top_right = (self.top_right[0], -self.bot_left[1])
-    #     return self
-
-    # def flip_horizontally(self):
-    #     self.points = [(-x, y) for x, y in self.points]
-    #     self.bot_left = (-self.top_right[0], self.bot_left[1])
-    #     self.top_right = (-self.bot_left[0], self.top_right[1])
-    #     return self
-
-    # def get_bounding_box(self):
-    #     return (
-    #         (self.bot_left[0], self.bot_left[1]),
-    #         (self.top_right[0], self.top_right[1])
-    #     )
-
-
 
 
 def create_shape(layer, points):
     origin = KleElementOrigin(0, 0)
     points = [(p[0]-origin.x, p[1]-origin.y) for p in points]
     
-    # min_x = min([x for x, y in points])
-    # max_x = max([x for x, y in points])
-    # min_y = min([y for x, y in points])
-    # max_y = max([y for x, y in points])
-    
-    new_shape = KleShape(layer, points, origin, True)#, (min_x, min_y), (max_x, max_y))
+    new_shape = KleShape(layer, points, origin, True)
     return new_shape
 
 
@@ -241,29 +213,6 @@ class KleLayoutElement:
         for se in self.subelements:
             se.rotate_by_angle(angle)
         return self
-
-    # def get_bounding_box(self):
-    #     """
-    #     Return points corresponding to left bottom and top right bounds
-    #     /----(x, y)
-    #     |       |
-    #     (x, y)----/
-    #     """
-    #     bbox_left_x = []
-    #     bbox_left_y = []
-    #     bbox_right_x = []
-    #     bbox_right_y = []
-    #     for se in self.subelements:
-    #         bbox = se.get_bounding_box()
-    #         bbox_left_x.append(bbox[0][0])
-    #         bbox_left_y.append(bbox[0][1])
-    #         bbox_right_x.append(bbox[1][0])
-    #         bbox_right_y.append(bbox[1][1])
-
-    #     return (
-    #         (min(bbox_left_x) + self.origin.x, min(bbox_left_y) + self.origin.y),
-    #         (max(bbox_right_x) + self.origin.x, max(bbox_right_y) + self.origin.y),
-    #     )
 
     def get_copy(self):
         copy = KleLayoutElement()

@@ -58,7 +58,7 @@ def get_dot_with_leads(
     lead_height=0.1, lead_width=0.085, # This is not great, need to figure out how to reduce this
     top_lead_rotation=0,
     plunger_rotation=0,
-    # to managable amounds TODO
+    # to managable amounts TODO
 ):
     dot = KleLayoutElement()
 
@@ -91,29 +91,17 @@ def get_dot_with_leads(
     dot.add_element(barrier_s.get_copy().move(
         0, -2 * dot_r - barrier_height
     ))
-
-    # Add Leads
-    # lead_points = [
-    #     (-lead_width/2 - bias_x, dot_r + barrier_height - bias_y),
-    #     (lead_width/2 + bias_x, dot_r + barrier_height - bias_y),
-    #     (lead_width/2 + bias_x, dot_r + barrier_height + lead_height),
-    #     (-lead_width/2 - bias_x, dot_r + barrier_height + lead_height),
-    # ]
-    # lead = create_shape(ohm_layer, lead_points)
     
     top_lead = get_polygon_with_connection(
         ohm_layer, annotation_layer, "PL0",
-        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 0.2],
+        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 5],
         connection_width=lead_width, connection_height=lead_height
     )
     bot_lead = get_polygon_with_connection(
         ohm_layer, annotation_layer, "PL1",
-        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 0.2],
+        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 5],
         connection_width=lead_width, connection_height=lead_height
     )
-
-    # dot.add_element(top_lead)
-    # top_lead.rotate_by_angle(top_lead_rotation)
     
     dot.add_element(bot_lead.rotate_by_angle(180))
     

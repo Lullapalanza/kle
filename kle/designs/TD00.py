@@ -37,7 +37,8 @@ layout.add_element(get_Lazar_global_markers(layers["MARKERS"]))
 
 
 # ==== START BOND PADS ====
-def create_bond_pads_for_quadrant(layer):
+def create_bond_pads_for_quadrant():
+    layer = layers["ANNOTATIONS"]
     port_gen = (i for i in range(8*4))
     pad_map = dict()
 
@@ -72,9 +73,10 @@ def create_bond_pads_for_quadrant(layer):
             # Add port
             c_id = next(port_gen)
             
-            port = get_polygon_with_connection(layers["ANNOTATIONS"], layers["ANNOTATIONS"], f"P{c_id}", [0, 0, 0, -1]).move(
+            port = get_polygon_with_connection(layers["ANNOTATIONS"], layers["ANNOTATIONS"], f"P{c_id}", [0, 0, 0, 10],
+                connection_width=4, connection_height=4).move(
                 1890/2 - tot_small_width/2 + i*spacing_small, -930 + height/2
-            )
+            ).rotate_by_angle(180)
             pad_map[c_id] = port.connection
             bond_pads.add_element(port)
 
@@ -121,7 +123,7 @@ for l, x, y in lm_l_pos:
         lm.add_element(lms.get_copy().move(*p))
     layout.add_element(lm.move(x, y))
 
-    bpads, ports = create_bond_pads_for_quadrant(layers["MARKERS"])
+    bpads, ports = create_bond_pads_for_quadrant()
 
     layout.add_element(bpads.move(x+150, y-150))
 # ==== END LOCAL MARKERS ====

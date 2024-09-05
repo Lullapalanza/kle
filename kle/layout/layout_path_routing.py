@@ -3,7 +3,7 @@ I want to autoroute a CPW with parameters and have it make some nice turns or so
 
 Also to have connection points (ports)?
 """
-import numpy as np
+import math
 
 
 class KleVector:
@@ -90,8 +90,8 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
 
         perp_1, perp_2 = dir_1.get_perp(), dir_2.get_perp()
 
-        alpha = np.arccos(dir_1 * (dir_2 * -1))
-        d = float(radii / np.tan(alpha/2))
+        alpha = math.acos(dir_1 * (dir_2 * -1))
+        d = float(radii / math.tan(alpha/2))
 
         # Distinguish left and right turns
         if perp_1 * dir_2 > 0:
@@ -104,21 +104,21 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
         prev_c_point = point - dir_1 * d
         next_c_point = point + dir_2 * d
         if dir_1.x_dir < 0:
-            phi = -np.arccos(round(prev_c_point.x - center_r.x, 6)/radii)
+            phi = -math.acos(round(prev_c_point.x - center_r.x, 6)/radii)
         else:
-            phi = np.arccos(round(prev_c_point.x - center_r.x, 6)/radii)
+            phi = math.acos(round(prev_c_point.x - center_r.x, 6)/radii)
 
         curr_point = KlePoint(
-            center_r.x + radii * np.cos(phi),
-            center_r.y - sign * radii * np.sin(phi)
+            center_r.x + radii * math.cos(phi),
+            center_r.y - sign * radii * math.sin(phi)
         )
         smooth_path.append(curr_point) 
 
-        while np.sqrt((curr_point - next_c_point).x**2 + (curr_point - next_c_point).y**2) > (radii * phi_step / (2 * np.pi)):
-            phi = phi - phi_step/(2*np.pi)
+        while math.sqrt((curr_point - next_c_point).x**2 + (curr_point - next_c_point).y**2) > (radii * phi_step / (2 * math.pi)):
+            phi = phi - phi_step/(2*math.pi)
             curr_point = KlePoint(
-                center_r.x + radii * np.cos(phi),
-                center_r.y - sign * radii * np.sin(phi)
+                center_r.x + radii * math.cos(phi),
+                center_r.y - sign * radii * math.sin(phi)
             )
             smooth_path.append(curr_point)
     smooth_path.append(course_path[-1])
@@ -131,7 +131,7 @@ def get_distance(path):
     p0 = path[0]
     for p in path[1:]:
         diff = p - p0
-        distance += np.sqrt(diff.x**2 + diff.y**2)
+        distance += math.sqrt(diff.x**2 + diff.y**2)
         p0 = p
     return distance
 
