@@ -1,6 +1,6 @@
 import math
 from kle.layout.layout import KleLayout, KleLayer, KleLayoutElement, KleShape, create_shape
-from kle.layout.layout_connections import get_polygon_with_connection
+from kle.layout.layout_connections import get_simple_connector, ConnectedElement
 
 
 def get_circle_points(r: float, n_pts: int = 50) -> list[tuple[float]]:
@@ -59,25 +59,22 @@ def get_dot_with_leads(
     top_lead_rotation=0,
     plunger_rotation=0,
     # to managable amounts TODO
-):
-    dot = KleLayoutElement()
+):  
+    dot = ConnectedElement()
 
-    plunger_height = 0.05
-    plnger_width = 0.2
+    plunger_height = 0.15
+    plunger_width = 0.06
     
     # Make a circle for the dot
     dot.add_element(create_shape(gate_0_layer, get_circle_points(dot_r)))
-    dot.add_element(create_shape(gate_0_layer, [
-        (0, -plunger_height/2 -bias_y), (0, plunger_height/2 +bias_y),
-        (-plnger_width -bias_x, plunger_height/2 +bias_y), (-plnger_width -bias_x, -plunger_height/2 -bias_y)
-    ]).rotate_by_angle(plunger_rotation))
-    dot.add_element(create_shape(gate_1_layer, [
-        (-dot_r - 0.05 + bias_x, plunger_height/2 + bias_y + 0.005),
-        (-dot_r - 0.05 + bias_x - 0.05, plunger_height/2 + bias_y + 0.005),
-        (-dot_r - 0.05 + bias_x - 0.05, -plunger_height/2 - bias_y - 0.005),
-        (-dot_r - 0.05 + bias_x, -plunger_height/2 - bias_y - 0.005),
-    ]
-    ).rotate_by_angle(plunger_rotation))
+    dot.add_connector_or_element("PL", get_simple_connector(
+        gate_0_layer, annotation_layer, "", [0, 0, 0, plunger_height], 
+        plunger_width, plunger_height
+    ).rotate_by_angle(plunger_rotation - 90))
+    dot.add_connector_or_element("PB", get_simple_connector(
+        gate_1_layer, annotation_layer, "", [0, dot_r, 0, dot_r + 0.05], 
+        plunger_width + 0.01, 0.05
+    ).rotate_by_angle(plunger_rotation - 90))
 
     # Add barrier up and below
     barrier_points = [
@@ -92,20 +89,21 @@ def get_dot_with_leads(
         0, -2 * dot_r - barrier_height
     ))
     
-    top_lead = get_polygon_with_connection(
-        ohm_layer, annotation_layer, "PL0",
+    top_lead = get_simple_connector(
+        ohm_layer, annotation_layer, "",
         [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 5],
         connection_width=lead_width, connection_height=lead_height
     )
-    bot_lead = get_polygon_with_connection(
-        ohm_layer, annotation_layer, "PL1",
+    bot_lead = get_simple_connector(
+        ohm_layer, annotation_layer, "",
         [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 5],
         connection_width=lead_width, connection_height=lead_height
     )
     
-    dot.add_element(bot_lead.rotate_by_angle(180))
+    dot.add_connector_or_element("TOPLEAD", top_lead.rotate_by_angle(top_lead_rotation))
+    dot.add_connector_or_element("BOTLEAD", bot_lead.rotate_by_angle(180))
     
-    return dot, bot_lead.connection
+    return dot
 
 
 def get_andreev_dot_with_loop(
@@ -118,7 +116,7 @@ def get_andreev_dot_with_loop(
     plunger_rotation=0
     # TODO FIX ME
 ):
-    dot, connection = get_dot_with_leads(
+    dot = get_dot_with_leads(
         ohm_layer, gate_0_layer, gate_1_layer, annotation_layer,
         bias_x, bias_y, dot_r,
         barrier_height, barrer_width,
@@ -145,5 +143,4 @@ def get_andreev_dot_with_loop(
     dot.add_element(half_loop.get_copy().move(0, dot_r + barrier_height + lead_height))
     dot.add_element(half_loop.get_copy().flip_vertically().move(0, -(dot_r + barrier_height + lead_height)))
     
-
-    return dot, connection
+    return dot

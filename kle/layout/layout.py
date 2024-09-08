@@ -105,11 +105,9 @@ class KleAnnotation(KleLayerPoints):
             False,
             self.text
         )
+
 def create_annotation(layer, text, x, y):
-    origin = KleElementOrigin(0, 0)
-    points = [(x-origin.x, y-origin.y)]
-    new_annotation = KleAnnotation(layer, points, origin, True, text)
-    return new_annotation
+    return KleAnnotation(layer, [(x, y)], KleElementOrigin(0, 0), True, text)
 
 
 @dataclass
@@ -134,13 +132,8 @@ class KleShape(KleLayerPoints):
             False,
         )
 
-
 def create_shape(layer, points):
-    origin = KleElementOrigin(0, 0)
-    points = [(p[0]-origin.x, p[1]-origin.y) for p in points]
-    
-    new_shape = KleShape(layer, points, origin, True)
-    return new_shape
+    return KleShape(layer, points, KleElementOrigin(0, 0), True)
 
 
 class KleLayoutElement:
@@ -220,7 +213,8 @@ class KleLayoutElement:
             copy.add_element(e.get_copy())
         return copy
 
-
+class NotElementError(BaseException):
+    pass
 
 class KleLayout:
     def __init__(self, width, height, layer_names):
@@ -256,6 +250,8 @@ class KleLayout:
         return self.layers
 
     def add_element(self, element):
+        if not (issubclass(type(element), KleLayoutElement) or issubclass(type(element), KleLayerPoints)):
+            raise NotElementError(element)
         self.elements_to_build.append(element)
 
     def build(self):
