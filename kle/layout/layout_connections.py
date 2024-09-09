@@ -142,7 +142,7 @@ def get_connector_extention(layer, annotation_layer, connector, relative_shift):
     
     e1 = get_simple_connector(
         layer, annotation_layer, f"{connector.label.text}_E1",
-        [0, 0, 0, 1], width, 0.2
+        [0, 0, 0, 5], width, 0.2
     ).move(*relative_shift)
     
 

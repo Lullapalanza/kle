@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 from kle.layout.layout import KleLayout, KleLayer, KleLayoutElement, KleShape, create_shape
 from kle.layout.layout_connections import get_simple_connector, ConnectedElement
 
@@ -51,96 +52,117 @@ def get_Lazar_global_markers(global_marker_layer: KleLayer) -> KleLayoutElement:
     return global_markers
 
 
-def get_dot_with_leads(
-    ohm_layer, gate_0_layer, gate_1_layer, annotation_layer,
-    bias_x=0.0, bias_y=0.0, dot_r=0.075,
-    barrier_height=0.04, barrer_width=0.15,
-    lead_height=0.1, lead_width=0.085, # This is not great, need to figure out how to reduce this
-    top_lead_rotation=0,
-    plunger_rotation=0,
-    # to managable amounts TODO
-):  
+@dataclass
+class DotWLeadsParams:
+    dot_r: float = 0.075
+    
+    barrier_width: float = 0.04
+    barrier_height: float = 0.15
+    barrier_offset: float = 0.025
+
+    lead_height: float = 0.1
+    lead_width: float = 0.085
+    top_lead_rotation: float = 0.0
+
+    plunger_height: float = 0.15
+    plunger_width: float = 0.06
+    plunger_rotation: float = 0.0
+
+    plunger_barrier_height: float = 0.05
+    plunger_barrier_width_offset: float = 0.01
+    plunger_barrier_offset: float = 0.02
+
+
+def get_dot_with_leads(ohm_layer, gate_0_layer, gate_1_layer, annotation_layer, params=DotWLeadsParams()):  
     dot = ConnectedElement()
 
-    plunger_height = 0.15
-    plunger_width = 0.06
-    
-    # Make a circle for the dot
-    dot.add_element(create_shape(gate_0_layer, get_circle_points(dot_r)))
+    # Make a circle for the dot and plunger + plunger barrier connectors
+    dot.add_element(create_shape(gate_0_layer, get_circle_points(params.dot_r)))
     dot.add_connector_or_element("PL", get_simple_connector(
-        gate_0_layer, annotation_layer, "", [0, 0, 0, plunger_height * 2], 
-        plunger_width, plunger_height
-    ).rotate_by_angle(plunger_rotation - 90))
-    dot.add_connector_or_element("PB", get_simple_connector(
-        gate_1_layer, annotation_layer, "", [0, dot_r, 0, dot_r + 0.05], 
-        plunger_width + 0.01, 0.05
-    ).rotate_by_angle(plunger_rotation - 90))
-
-    # Add barrier up and below
-    barrier_points = [
-        (-barrer_width/2 - bias_x, dot_r - bias_y),
-        (barrer_width/2 + bias_x, dot_r - bias_y),
-        (barrer_width/2 + bias_x, dot_r + barrier_height + bias_y),
-        (-barrer_width/2 - bias_x, dot_r + barrier_height + bias_y)
-    ]
-    barrier_s = create_shape(gate_1_layer, barrier_points)
-    dot.add_element(barrier_s.move(0, 0).get_copy().rotate_by_angle(top_lead_rotation))
-    dot.add_element(barrier_s.get_copy().move(
-        0, -2 * dot_r - barrier_height
-    ))
+        gate_0_layer, annotation_layer, "", [0, 0, 0, params.plunger_height * 2], 
+        params.plunger_width, params.plunger_height
+    ).rotate_by_angle(params.plunger_rotation - 90))
     
+    plunger_barrier = get_simple_connector(
+        gate_1_layer, annotation_layer, "", [0, 0, 0, 0.1], 
+        params.plunger_width + 0.01, 0.05
+    ).rotate_by_angle(17).move(0, params.dot_r + params.plunger_barrier_offset + 0.015)
+    dot.add_connector_or_element("PB", plunger_barrier)
+    pwidth = (params.plunger_width + params.plunger_barrier_width_offset)/2
+    plunger_barrier.add_element(create_shape(gate_1_layer,
+        [
+            (-pwidth, params.dot_r + params.plunger_barrier_offset),
+            (pwidth, params.dot_r + params.plunger_barrier_offset),
+            (pwidth, params.dot_r + params.plunger_barrier_offset + params.plunger_barrier_height),
+            (-pwidth, params.dot_r + params.plunger_barrier_offset + params.plunger_barrier_height)
+        ]
+    ))
+    plunger_barrier.rotate_by_angle(params.plunger_rotation - 90)
+
+    # Add barrier connectors
+    barrier_top = get_simple_connector(
+        gate_1_layer, annotation_layer, "", [0, 0, -params.barrier_height * 2, 0], 
+        params.barrier_width, params.barrier_height
+    ).move(params.barrier_height/2 - params.barrier_offset, params.dot_r + params.barrier_width/2)
+    dot.add_connector_or_element("TB", barrier_top)
+    barrier_top.rotate_by_angle(params.top_lead_rotation)
+
+    barrier_bot = get_simple_connector(
+        gate_1_layer, annotation_layer, "", [0, 0, -params.barrier_height * 2, 0], 
+        params.barrier_width, params.barrier_height
+    ).move(params.barrier_height/2 - params.barrier_offset, -params.dot_r -params.barrier_width/2)
+    dot.add_connector_or_element("BB", barrier_bot)
+
     top_lead = get_simple_connector(
         ohm_layer, annotation_layer, "",
-        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 0.1],
-        connection_width=lead_width, connection_height=lead_height
+        [0, params.dot_r + params.barrier_width, 0, params.dot_r + params.barrier_width + params.lead_height + 0.1],
+        connection_width=params.lead_width, connection_height=params.lead_height
     )
     bot_lead = get_simple_connector(
         ohm_layer, annotation_layer, "",
-        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 5],
-        connection_width=lead_width, connection_height=lead_height
+        [0, params.dot_r + params.barrier_width, 0, params.dot_r + params.barrier_width + params.lead_height + 0.1],
+        connection_width=params.lead_width, connection_height=params.lead_height
     )
     
-    dot.add_connector_or_element("TOPLEAD", top_lead.rotate_by_angle(top_lead_rotation))
+    dot.add_connector_or_element("TOPLEAD", top_lead.rotate_by_angle(params.top_lead_rotation))
     dot.add_connector_or_element("BOTLEAD", bot_lead.rotate_by_angle(180))
     
     return dot
 
 
-def get_andreev_dot_with_loop(
-    ohm_layer, gate_0_layer, gate_1_layer, annotation_layer,
-    loop_width=0.8, loop_area=2,
-    bias_x=0, bias_y=0, dot_r=0.075,
-    barrier_height=0.04, barrer_width=0.15,
-    lead_height=0.1, lead_width=0.085,
-    top_lead_rotation=0,
-    plunger_rotation=0
-    # TODO FIX ME
-):
+@dataclass
+class ADParams(DotWLeadsParams):
+    loop_width: float = 0.08
+    loop_area: float = 2
+    flip_loop: bool = False
+
+def get_andreev_dot_with_loop(ohm_layer, gate_0_layer, gate_1_layer, annotation_layer, params=ADParams()):
     dot = get_dot_with_leads(
-        ohm_layer, gate_0_layer, gate_1_layer, annotation_layer,
-        bias_x, bias_y, dot_r,
-        barrier_height, barrer_width,
-        lead_height, lead_width,
-        top_lead_rotation,
-        plunger_rotation
+        ohm_layer, gate_0_layer, gate_1_layer, annotation_layer, params
     )
 
-    loop_height = loop_area / loop_width
-    loop_top_offset = dot_r + barrier_height + lead_height
+    loop_height = params.loop_area / params.loop_width
+    loop_top_offset = params.dot_r + params.barrier_height + params.lead_height
     loop_points = [
-        (-lead_width/2 - bias_x, 0),
-        (lead_width/2 + bias_x, 0),
-        (lead_width/2, loop_height/2 - loop_top_offset),
-        (lead_width/2 + loop_width, loop_height/2 - loop_top_offset),
-        (lead_width/2 + loop_width, -loop_top_offset),
+        (-params.lead_width/2, 0),
+        (params.lead_width/2, 0),
+        (params.lead_width/2, loop_height/2 - loop_top_offset),
+        (params.lead_width/2 + params.loop_width, loop_height/2 - loop_top_offset),
+        (params.lead_width/2 + params.loop_width, -loop_top_offset),
 
-        (lead_width/2 + loop_width + lead_width, -loop_top_offset),
-        (lead_width/2 + loop_width + lead_width, loop_height/2 - loop_top_offset + lead_width),
-        (-lead_width/2, loop_height/2 - loop_top_offset + lead_width)
+        (params.lead_width/2 + params.loop_width + params.lead_width, -loop_top_offset),
+        (params.lead_width/2 + params.loop_width + params.lead_width, loop_height/2 - loop_top_offset + params.lead_width),
+        (-params.lead_width/2, loop_height/2 - loop_top_offset + params.lead_width)
     ]
     half_loop = create_shape(ohm_layer, loop_points)
 
-    dot.add_element(half_loop.get_copy().move(0, dot_r + barrier_height + lead_height))
-    dot.add_element(half_loop.get_copy().flip_vertically().move(0, -(dot_r + barrier_height + lead_height)))
-    
+    hl0 = half_loop.get_copy().move(0, params.dot_r + params.barrier_height + params.lead_height)
+    hl1 = half_loop.get_copy().flip_vertically().move(0, -(params.dot_r + params.barrier_height + params.lead_height))
+
+    dot.add_elements([hl0, hl1])
+
+    if params.flip_loop:
+        hl0.flip_horizontally()
+        hl1.flip_horizontally()
+
     return dot

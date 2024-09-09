@@ -8,8 +8,8 @@ Maybe also bounding boxes? That way I can have margins without having to move th
 from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape, create_annotation
 from kle.layout.dot_elements import (
     get_Lazar_global_markers,
-    get_dot_with_leads,
-    get_andreev_dot_with_loop,
+    get_dot_with_leads, DotWLeadsParams,
+    get_andreev_dot_with_loop, ADParams,
 )
 from kle.layout.layout_trace_routing import get_routed_trace
 from kle.layout.layout_connections import get_simple_connector, ConnectedElement, get_connector_extention
@@ -137,31 +137,35 @@ dot_shift = 0.065
 barrier_shift = (dot_shift - 0.05)/2
 
 def get_charge_sensed_ad(r_cs, r_ad):
+    CS_params = DotWLeadsParams(dot_r=r_cs, barrier_width=0.05)
+    
     CS_AD = ConnectedElement()
     dot = get_dot_with_leads(
         layers["OHMICS_0"],
         layers["GATES0_0"],
         layers["GATES1_0"],
         layers["ANNOTATIONS"],
-        dot_r=r_cs,
-        bias_x=-0.00,
-        bias_y=-0.00,
-        barrier_height=0.05
+        CS_params
     )
     CS_AD.add_connector_or_element("CS", dot)
+
+    AD_params = ADParams(
+        dot_r=r_ad,
+        top_lead_rotation=45,
+        loop_area=200,
+        loop_width=20,
+        plunger_rotation=90-17,
+        barrier_width=0.05,
+        barrier_offset=-0.01,
+        plunger_barrier_offset=0.05,
+        flip_loop=False
+    )
     CS_AD.add_connector_or_element("AD", get_andreev_dot_with_loop(
         layers["OHMICS_0"],
         layers["GATES0_0"],
         layers["GATES1_0"],
         layers["ANNOTATIONS"],
-        dot_r=r_ad,
-        top_lead_rotation=45,
-        loop_area=200,
-        loop_width=20,
-        bias_x=-0.00,
-        bias_y=-0.00,
-        plunger_rotation=73,
-        barrier_height=0.05
+        AD_params
     ).move(r_cs + r_ad + dot_shift, 0))
     barrier = create_shape(layers["GATES1_0"], barrier_points)
     CS_AD.add_element(barrier.move(r_cs + barrier_shift, 0))
@@ -188,25 +192,32 @@ first_quadrant.move(1775 + 150, 4175 - 150)
 layout.add_element(first_quadrant)
 
 
-def connect_with_ext(c0l, c1l, rotation, position):
+def connect_with_ext(c0l, c1l, layer, rotation, position):
     c0 = first_quadrant.get_connector(c0l)
     c1 = bpads.get_connector(c1l)
 
     e0, e1 = get_connector_extention(
-        layers["OHMICS_0"],
+        layer,
         layers["ANNOTATIONS"],
         c0,
         position
     )
 
-    c0.connect_to(e0.rotate_by_angle(rotation), layers["OHMICS_0"])
-    # e1.rotate_by_angle(rotation).connect_to(c1, layers["OHMICS_0"])
-    c1.connect_to(e1.rotate_by_angle(rotation), layers["OHMICS_0"])
+    c0.connect_to(e0.rotate_by_angle(rotation), layer)
+    c1.connect_to(e1.rotate_by_angle(rotation), layer)
     layout.add_element(e0)
     layout.add_element(e1)
 
-connect_with_ext("N_CS_TOPLEAD", "P30", -90, (1910, 4042))
-connect_with_ext("N_CS_PL", "P29", -90, (1910, 4041.4))
+ol = layers["OHMICS_0"]
+g0 = layers["GATES0_0"]
+g1 = layers["GATES1_0"]
+
+connect_with_ext("N_CS_TOPLEAD", "P28", ol, -90, (1900, 4042))
+connect_with_ext("N_CS_TB", "P27", g1, -90, (1910, 4041.6))
+connect_with_ext("N_CS_PB", "P26", g1, -90, (1910.2, 4041.2))
+connect_with_ext("N_CS_PL", "P25", g0, -135, (1908, 4038))
+connect_with_ext("N_CS_BB", "P24", g1, -135, (1908, 4037))
+connect_with_ext("N_CS_BOTLEAD", "P23", ol, -135, (1909, 4035))
 
 
 
