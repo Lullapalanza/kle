@@ -163,7 +163,7 @@ def get_charge_sensed_ad(r_cs, r_ad):
         plunger_rotation=73,
         barrier_height=0.05
     ).move(r_cs + r_ad + dot_shift, 0))
-    barrier = create_shape(layers["GATES0_0"], barrier_points)
+    barrier = create_shape(layers["GATES1_0"], barrier_points)
     CS_AD.add_element(barrier.move(r_cs + barrier_shift, 0))
     return CS_AD
 

@@ -58,7 +58,7 @@ class Connector(KleLayoutElement):
         return other
 
     def __str__(self):
-        return f"{self.label}, {self.connection}"
+        return f"{self.subelements}"
 
 
 def get_simple_connector(layer, annotation_layer, connection_name,

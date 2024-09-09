@@ -116,12 +116,20 @@ class KleShape(KleLayerPoints):
         if self.layer.polarity == 1:
             target_cell.shapes(self.layer.layer).insert(
                 pya.Polygon([
-                    pya.Point((x+self.origin.x) / LAYOUT_DBU, (y+self.origin.y) / LAYOUT_DBU) for x, y in self.points
+                    pya.Point(
+                        round((x+self.origin.x) / LAYOUT_DBU),
+                        round((y+self.origin.y) / LAYOUT_DBU)
+                    ) for x, y in self.points
                 ])
             )
         elif self.layer.polarity == -1:
             self.layer.layer_base.insert_hole(
-                [pya.Point((x+self.origin.x) / LAYOUT_DBU, (y+self.origin.y) / LAYOUT_DBU) for x, y in self.points]
+                [
+                    pya.Point(
+                        round((x+self.origin.x) / LAYOUT_DBU),
+                        round((y+self.origin.y) / LAYOUT_DBU)
+                    ) for x, y in self.points
+                ]
             )
 
     def get_copy(self):
@@ -212,6 +220,8 @@ class KleLayoutElement:
         for e in self.subelements:
             copy.add_element(e.get_copy())
         return copy
+
+            
 
 class NotElementError(BaseException):
     pass
