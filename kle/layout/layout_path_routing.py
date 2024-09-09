@@ -104,9 +104,9 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
         prev_c_point = point - dir_1 * d
         next_c_point = point + dir_2 * d
         if dir_1.x_dir < 0:
-            phi = -math.acos(round(prev_c_point.x - center_r.x, 6)/radii)
+            phi = -math.acos(round(prev_c_point.x - center_r.x, 3)/radii)
         else:
-            phi = math.acos(round(prev_c_point.x - center_r.x, 6)/radii)
+            phi = math.acos(round(prev_c_point.x - center_r.x, 3)/radii)
 
         curr_point = KlePoint(
             center_r.x + radii * math.cos(phi),

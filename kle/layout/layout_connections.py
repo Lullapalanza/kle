@@ -45,7 +45,7 @@ class Connector(KleLayoutElement):
             self.label.text = f"{prefix}_{self.label.text}"
 
     def connect_to(self, other, trace_layer):
-        radii = max(self.width, other.width)
+        radii = max(self.width, other.width) * 1.2
         trace = get_routed_trace(
             trace_layer, get_path_between_connections(
                 self.connection, other.connection
@@ -54,6 +54,8 @@ class Connector(KleLayoutElement):
             radii=radii
         )
         self.add_element(trace)
+        
+        return other
 
     def __str__(self):
         return f"{self.label}, {self.connection}"
@@ -88,7 +90,7 @@ def get_simple_connector(layer, annotation_layer, connection_name,
     ])
     label = create_annotation(
         annotation_layer, connection_name,  0, 0
-    ).move(connection_points[0], connection_points[1] + connection_height)
+    ).move(connection_x0, connection_y0)
     
     connector = Connector(poly, label, connection, connection_width)
 
@@ -129,3 +131,19 @@ class ConnectedElement(KleLayoutElement):
         
         self.add_element(other)
         return self
+
+def get_connector_extention(layer, annotation_layer, connector, relative_shift):
+    width = connector.width
+
+    e0 = get_simple_connector(
+        layer, annotation_layer, f"{connector.label.text}_E0",
+        [0, 0, 0, -1], width, 0.2
+    ).move(*relative_shift)
+    
+    e1 = get_simple_connector(
+        layer, annotation_layer, f"{connector.label.text}_E1",
+        [0, 0, 0, 1], width, 0.2
+    ).move(*relative_shift)
+    
+
+    return e0, e1

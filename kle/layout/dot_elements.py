@@ -68,7 +68,7 @@ def get_dot_with_leads(
     # Make a circle for the dot
     dot.add_element(create_shape(gate_0_layer, get_circle_points(dot_r)))
     dot.add_connector_or_element("PL", get_simple_connector(
-        gate_0_layer, annotation_layer, "", [0, 0, 0, plunger_height], 
+        gate_0_layer, annotation_layer, "", [0, 0, 0, plunger_height * 2], 
         plunger_width, plunger_height
     ).rotate_by_angle(plunger_rotation - 90))
     dot.add_connector_or_element("PB", get_simple_connector(
@@ -91,7 +91,7 @@ def get_dot_with_leads(
     
     top_lead = get_simple_connector(
         ohm_layer, annotation_layer, "",
-        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 5],
+        [0, dot_r + barrier_height, 0, dot_r + barrier_height + lead_height + 0.1],
         connection_width=lead_width, connection_height=lead_height
     )
     bot_lead = get_simple_connector(

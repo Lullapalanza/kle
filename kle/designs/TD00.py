@@ -12,7 +12,7 @@ from kle.layout.dot_elements import (
     get_andreev_dot_with_loop,
 )
 from kle.layout.layout_trace_routing import get_routed_trace
-from kle.layout.layout_connections import get_simple_connector, ConnectedElement
+from kle.layout.layout_connections import get_simple_connector, ConnectedElement, get_connector_extention
 
 
 LAYER_NAMES = [
@@ -188,9 +188,27 @@ first_quadrant.move(1775 + 150, 4175 - 150)
 layout.add_element(first_quadrant)
 
 
-port = bpads.get_connector("P0")
-first_quadrant.get_connector("N_CS_TOPLEAD").connect_to(port, layers["OHMICS_0"])
+def connect_with_ext(c0l, c1l, rotation, position):
+    c0 = first_quadrant.get_connector(c0l)
+    c1 = bpads.get_connector(c1l)
+
+    e0, e1 = get_connector_extention(
+        layers["OHMICS_0"],
+        layers["ANNOTATIONS"],
+        c0,
+        position
+    )
+
+    c0.connect_to(e0.rotate_by_angle(rotation), layers["OHMICS_0"])
+    # e1.rotate_by_angle(rotation).connect_to(c1, layers["OHMICS_0"])
+    c1.connect_to(e1.rotate_by_angle(rotation), layers["OHMICS_0"])
+    layout.add_element(e0)
+    layout.add_element(e1)
+
+connect_with_ext("N_CS_TOPLEAD", "P30", -90, (1910, 4042))
+connect_with_ext("N_CS_PL", "P29", -90, (1910, 4041.4))
 
 
-# layout.build_to_file("C:/Users/nbr720/Documents/PhD/design/design_files/TD00.dxf")
-layout.build_to_file("C:/Users/jyrgen/Documents/PhD/design/gds_files/TD00.dxf")
+
+layout.build_to_file("C:/Users/nbr720/Documents/PhD/design/design_files/TD00.dxf")
+# layout.build_to_file("C:/Users/jyrgen/Documents/PhD/design/gds_files/TD00.dxf")
