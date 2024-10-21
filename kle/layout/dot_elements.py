@@ -65,7 +65,7 @@ class DotWLeadsParams:
     top_lead_rotation: float = 0.0
 
     plunger_height: float = 0.15
-    plunger_width: float = 0.06
+    plunger_width: float = 0.05
     plunger_rotation: float = 0.0
 
     plunger_barrier_height: float = 0.05

@@ -156,7 +156,8 @@ def get_charge_sensed_ad(r_cs, r_ad):
         loop_width=20,
         plunger_rotation=90-17,
         barrier_width=0.05,
-        barrier_offset=-0.01,
+        barrier_offset=-0.02,
+        barrier_height=0.05,
         plunger_barrier_offset=0.05,
         flip_loop=False
     )
@@ -211,6 +212,8 @@ def connect_with_ext(c0l, c1l, layer, rotation, position):
 ol = layers["OHMICS_0"]
 g0 = layers["GATES0_0"]
 g1 = layers["GATES1_0"]
+
+connect_with_ext("N_AD_TB", "P3", g1, 0, (1915, 4050))
 
 connect_with_ext("N_CS_TOPLEAD", "P28", ol, -90, (1900, 4042))
 connect_with_ext("N_CS_TB", "P27", g1, -90, (1910, 4041.6))
