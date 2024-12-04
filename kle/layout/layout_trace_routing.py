@@ -69,9 +69,9 @@ def get_polygon_sides(path, width=10, gap=5):
             (klepoint - perp * width/2).get_tuple()
         )
         right_hull.insert(0,
-            (klepoint - perp * (width/2 + gap)).get_tuple()
+            (klepoint - (perp * (width/2 + gap))).get_tuple()
         )
-    
+
     # Add last point
     left_hull.append(
         (path[-1] + perp * width/2).get_tuple()
