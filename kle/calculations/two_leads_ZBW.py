@@ -39,7 +39,7 @@ _H_lead = np.matmul(up_d_dag, down_d_dag)
 _H_lead_dag = np.transpose(np.conjugate(_H_lead))
 
 
-def get_H(phi, xi, gamma, U, DELTA, E_Z=0, phi_so=0):
+def get_H(phi, xi, gamma, U, DELTA, E_Z=0, phi_so=0, lambda_so=0):
     """
     Get hamiltonian for a SC - QD - SC system where all parts can have gg, eg, ge or ee states (only 1 orbital)
     """
@@ -87,6 +87,19 @@ def get_H(phi, xi, gamma, U, DELTA, E_Z=0, phi_so=0):
     H_t_L = gamma_d * (_H_L + np.transpose(np.conjugate(_H_L)))
 
     # spin flip tunneling
+    # Instead of spin flip tunneling I want to look at SOI as a spin flipping process on the hamiltonian itself
+
+    # lambda_SO = 1
+    # phi_k = 1
+    # H_SOI_0 = 1.j * lambda_so * 0.9 * np.exp(-1.j * phi_k * 0.9) * np.kron(
+    #     np.matmul(up_d_dag, down_d),
+    #     np.eye(16)
+    # )
+    # H_SOI_1 = 1.j * lambda_so * 1.1 * np.exp(1.j * phi_k * 1.1) * np.kron(
+    #     np.matmul(up_d, down_d_dag),
+    #     np.eye(16)
+    # )
+
     _H_sfR = np.kron(
             up_d_dag,
             np.kron(np.eye(4), down_d)
@@ -102,13 +115,18 @@ def get_H(phi, xi, gamma, U, DELTA, E_Z=0, phi_so=0):
     )
     H_t_sfL = gamma_sf * (_H_sfL * -1.j + np.transpose(np.conjugate(_H_sfL)) * 1.j)
 
-    H_total = H_dot + H_sc_L + H_sc_R + H_t_L + H_t_R + H_t_sfR + H_t_sfL
+    H_total = H_dot + H_sc_L + H_sc_R + H_t_L + H_t_R + H_t_sfR + H_t_sfL # H_SOI_0 + H_SOI_1
     return H_total
 
 
 e_dot = np.kron(np.diag([0, 1, 1, 2]), np.eye(16))
 def get_state_dot_charge(state):
     res = np.conjugate(state).dot(e_dot).dot(state)
+    return res
+
+spin_dot = np.kron(np.diag([0, 1, -1, 0]), np.eye(16))
+def get_state_spin(state):
+    res = np.conjugate(state).dot(spin_dot).dot(state)
     return res
 
 

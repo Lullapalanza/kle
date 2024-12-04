@@ -7,3 +7,9 @@ License: BSD-3-Clause
 Requires-Python: >=3.8
 Description-Content-Type: text/x-rst
 Requires-Dist: klayout
+
+Things to do
+
+* Finish initial port routing for chips
+* Figure out better parametrization
+* Bounding boxes?
