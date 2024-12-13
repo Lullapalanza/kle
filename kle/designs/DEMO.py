@@ -25,38 +25,38 @@ layout = KleLayout(6000, 6000, LAYER_NAMES)
 layers = layout.get_layers()
 
 
-# shape = create_shape(layers["OHMICS_0"], [(0, 0), (0.1, 0), (0.1, 0.2), (0, 0.2)])
-# layout.add_element(shape)
+shape = create_shape(layers["OHMICS_0"], [(0, 0), (0.1, 0), (0.1, 0.2), (0, 0.2)])
+layout.add_element(shape)
 
-# element = KleLayoutElement()
-# element.add_element(shape.get_copy())
-# element.add_element(shape.get_copy().rotate_by_angle(90))
-# layout.add_element(element)
+element = KleLayoutElement()
+element.add_element(shape.get_copy())
+element.add_element(shape.get_copy().rotate_by_angle(90))
+layout.add_element(element)
 
-# layout.add_element(get_Lazar_global_markers(layers["MARKERS"]))
+layout.add_element(get_Lazar_global_markers(layers["MARKERS"]))
 
-# params = DotWLeadsParams()
+params = DotWLeadsParams()
 
-# ad0 = get_dot_with_leads(
-#     layers["OHMICS_0"],
-#     layers["GATES0_0"],
-#     layers["GATES1_0"],
-#     layers["ANNOTATIONS"],
-#     params
-# )
-# ad1 = get_dot_with_leads(
-#     layers["OHMICS_0"],
-#     layers["GATES0_0"],
-#     layers["GATES1_0"],
-#     layers["ANNOTATIONS"],
-#     params
-# )
+ad0 = get_dot_with_leads(
+    layers["OHMICS_0"],
+    layers["GATES0_0"],
+    layers["GATES1_0"],
+    layers["ANNOTATIONS"],
+    params
+)
+ad1 = get_dot_with_leads(
+    layers["OHMICS_0"],
+    layers["GATES0_0"],
+    layers["GATES1_0"],
+    layers["ANNOTATIONS"],
+    params
+)
 
-# ad0.rotate_by_angle(30)
+ad0.rotate_by_angle(30)
 
-# layout.add_element(ad0)
-# layout.add_element(ad1.move(0.1, 0.6))
+layout.add_element(ad0)
+layout.add_element(ad1.move(0.1, 0.6))
 
-# ad0.get_connector("TB").connect_to(ad1.get_connector("BB"), layers["GATES1_0"])
+ad0.get_connector("TB").connect_to(ad1.get_connector("BB"), layers["GATES1_0"])
 
-layout.build_to_file("C:/Users/nbr720/Documents/PhD/design/design_files/DEMO.dxf")
+layout.build_to_file("/home/jyrgen/Downloads/PhD/design/design_files/DEMO.dxf")
