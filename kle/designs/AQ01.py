@@ -4,6 +4,7 @@ from kle.layout.dot_elements import (
     get_dot_with_leads, DotWLeadsParams,
     get_andreev_dot_with_loop, ADParams,
 )
+from kle.layout.layout_connections import ConnectedElement
 
 LA_LAYERS = [
     "LM", "OHMICS", "BARRIERS", "PLUNGERS", "SL"
@@ -167,10 +168,10 @@ barrier_shift = (dot_shift - 0.05)/2
 # ==== FIRST QUADRANT ====
 
 def get_charge_sensed_ad(r_cs, r_ad):
-    CS_AD = KleLayoutElement()
+    CS_AD = ConnectedElement()
     
     charge_sensor_params = DotWLeadsParams(dot_r=r_cs, barrier_width=0.05)
-    CS_AD.add_element(get_dot_with_leads(
+    CS_AD.add_connector_or_element("CS", get_dot_with_leads(
         layers["OHMICS0"],
         layers["PLUNGERS0"],
         layers["BARRIERS0"],
@@ -189,7 +190,7 @@ def get_charge_sensed_ad(r_cs, r_ad):
         barrier_offset=0,
         plunger_barrier_offset=0.05
     )
-    CS_AD.add_element(get_andreev_dot_with_loop(
+    CS_AD.add_connector_or_element("AD", get_andreev_dot_with_loop(
         layers["OHMICS0"],
         layers["PLUNGERS0"],
         layers["BARRIERS0"],
@@ -197,11 +198,11 @@ def get_charge_sensed_ad(r_cs, r_ad):
         andreev_params,
     ).move(r_cs + r_ad + dot_shift, 0))
     barrier = create_shape(layers["BARRIERS0"], barrier_points)
-    CS_AD.add_element(barrier.move(r_cs + barrier_shift, 0))
+    CS_AD.add_connector_or_element("B0", barrier.move(r_cs + barrier_shift, 0))
     return CS_AD
 
 
-first_quadrant = KleLayoutElement()
+first_quadrant = ConnectedElement()
 
 SL_WIDTH = 0.5
 mirror_shift = 20 + 0.5
@@ -245,6 +246,9 @@ layout.add_element(first_quadrant)
 # ===== END FIRST QUADRANT ====
 
 
+left_side.get_connector("CS_TOPLEAD").connect_to(
+    left_side.get_connector("AD_TOPLEAD"), layers["OHMICS0"]
+)
 
 # # ===== SECOND QUADRANT ======
 # def get_double_junction(r_cs, r_ad):
@@ -385,4 +389,4 @@ layout.add_element(first_quadrant)
 #     get_dad_quadrant(layers["OHMICS4"], layers["GATES4"], layers["CG4"], layers["SL4"], (3925, 2025))
 # )
 
-layout.build_to_file("/home/jyrgen/Downloads/PhD/design/design_files/AQ01_20241213.dxf")
+layout.build_to_file(r"/home/jyrgen/Documents/PhD/design_files/AQ01_20241213.dxf")
