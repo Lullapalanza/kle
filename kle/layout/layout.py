@@ -112,18 +112,21 @@ def create_annotation(layer, text, x, y):
 
 @dataclass
 class KleShape(KleLayerPoints):
-    def build_to_cell(self, target_cell):
-        if self.layer.polarity == 1:
-            target_cell.shapes(self.layer.layer).insert(
-                pya.Polygon([
-                    pya.Point(
-                        round((x+self.origin.x) / LAYOUT_DBU),
-                        round((y+self.origin.y) / LAYOUT_DBU)
-                    ) for x, y in self.points
-                ])
-            )
-        elif self.layer.polarity == -1:
-            self.layer.layer_base.insert_hole(
+    def build_to_cell(self, target_cell, override_polarity=None, override_target=None):
+        polarity = override_polarity or self.layer.polarity
+        if polarity == 1:
+            target = pya.Polygon([
+                pya.Point(
+                    round((x+self.origin.x) / LAYOUT_DBU),
+                    round((y+self.origin.y) / LAYOUT_DBU)
+                ) for x, y in self.points
+            ])
+            if override_target:
+                return target
+            target_cell.shapes(self.layer.layer).insert(target)
+        elif polarity == -1:
+            target = override_target or self.layer.layer_base
+            target.insert_hole(
                 [
                     pya.Point(
                         round((x+self.origin.x) / LAYOUT_DBU),
@@ -131,6 +134,7 @@ class KleShape(KleLayerPoints):
                     ) for x, y in self.points
                 ]
             )
+        return target
 
     def get_copy(self):
         return KleShape(
@@ -179,9 +183,9 @@ class KleLayoutElement:
         for se in subelements:
             self.add_element(se)
 
-    def build_to_cell(self, target_cell):
+    def build_to_cell(self, target_cell, override_polarity=None, override_target=None):
         for subelement in self.subelements:
-            subelement.build_to_cell(target_cell)
+            subelement.build_to_cell(target_cell, override_polarity, override_target)
 
     def move(self, x, y):
         if self.holding_origin:
@@ -221,7 +225,24 @@ class KleLayoutElement:
             copy.add_element(e.get_copy())
         return copy
 
-            
+
+class KleCutOut(KleLayoutElement):
+    def __init__(self, positive_elem):
+        super().__init__()
+        self.add_element(positive_elem)
+
+
+    # Building cutouts needs to be fixed, insert should happen after everything else
+    def build_to_cell(self, target_cell):
+        override_target = self.subelements[0].build_to_cell(target_cell, override_target=True)
+
+        for subelement in self.subelements[1:]:
+            subelement.build_to_cell(target_cell, -1, override_target)
+
+        target_cell.shapes(self.subelements[0].layer.layer).insert(override_target)
+
+
+
 
 class NotElementError(BaseException):
     pass

@@ -8,14 +8,13 @@ from kle.layout.dot_elements import (
     get_dot_with_leads, DotWLeadsParams,
     get_andreev_dot_with_loop, ADParams,
 )
-from kle.layout.resonator_elements import get_cpw_port
+from kle.layout.resonator_elements import get_cpw_port, get_interdigit_LC, get_L_length, LCParams
 from kle.layout.layout_trace_routing import get_routed_cpw, get_routed_trace
 from kle.layout.layout_connections import ConnectedElement
 
 
 LAYER_NAMES = [
     "SC",
-    "SC_0"
 ]
 
 layout = KleLayout(6000, 6000, LAYER_NAMES)
@@ -109,21 +108,36 @@ def get_LC(N, L=200, W=2, G=2):
 
     return resonator
 
-layout.add_element(get_LC(4).move(1200, 4700))
-layout.add_element(get_LC(5).move(2200, 4700))
-layout.add_element(get_LC(6).move(3200, 4700))
-layout.add_element(get_LC(7).move(4200, 4700))
-layout.add_element(get_LC(8).move(5200, 4700))
+# layout.add_element(get_LC(4).move(1200, 4700))
+# layout.add_element(get_LC(5).move(2200, 4700))
+# layout.add_element(get_LC(6).move(3200, 4700))
+# layout.add_element(get_LC(7).move(4200, 4700))
+# layout.add_element(get_LC(8).move(5200, 4700))
 
 
-layout.add_element(get_LC(4, W=1.5, G=1.5).move(1200, 4100))
-layout.add_element(get_LC(5, W=1.5, G=1.5).move(2200, 4100))
-layout.add_element(get_LC(6, W=1.5, G=1.5).move(3200, 4100))
-layout.add_element(get_LC(7, W=1.5, G=1.5).move(4200, 4100))
-layout.add_element(get_LC(8, W=1.5, G=1.5).move(5200, 4100))
+# layout.add_element(get_LC(4, W=1.5, G=1.5).move(1200, 4100))
+# layout.add_element(get_LC(5, W=1.5, G=1.5).move(2200, 4100))
+# layout.add_element(get_LC(6, W=1.5, G=1.5).move(3200, 4100))
+# layout.add_element(get_LC(7, W=1.5, G=1.5).move(4200, 4100))
+# layout.add_element(get_LC(8, W=1.5, G=1.5).move(5200, 4100))
 
-layout.add_element(create_shape(layers["SC_0"], []))
+# layout.add_element(create_shape(layers["SC_0"], []))
+
+mL, cL = get_L_length(5e9, 1000, width=2, L_sheet=26e-12, N=5)
+print(mL, cL)
+
+
+lcp = LCParams()
+lcp.interdigit_cap_L = cL
+lcp.meander_height = cL + 15
+lcp.meander_L = mL
+lcp.meander_N = 6
+resonator = get_interdigit_LC(layers["SC"], lcp)
+
+layout.add_element(
+    resonator
+)
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/L00_20250127.gds"
+    r"/home/jyrgen/Documents/PhD/design_files/L01_20250210.gds"
 )

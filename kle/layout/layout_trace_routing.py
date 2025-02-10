@@ -6,6 +6,13 @@ from kle.layout.layout_path_routing import (
     get_vector_between_points
 )
 
+def get_smoothed_path(path, radii, phi_step):
+    path = smooth_path([
+        KlePoint(x, y) for x, y in path
+    ], radii, phi_step)
+    trace_length = get_distance(path)
+    return path, trace_length
+
 
 def get_routed_trace(layer, path, width_start=0.7, width_end=1, radii=0.5, phi_step=0.5):
     trace = KleLayoutElement()
@@ -14,8 +21,9 @@ def get_routed_trace(layer, path, width_start=0.7, width_end=1, radii=0.5, phi_s
     path = smooth_path([
         KlePoint(x, y) for x, y in path
     ], radii, phi_step)
-    path_len = get_distance(path)
+    trace_length = get_distance(path)
 
+    print("Distance:", round(trace_length, 2), "um")
 
     hull = []
     curr_len = 0
@@ -23,7 +31,7 @@ def get_routed_trace(layer, path, width_start=0.7, width_end=1, radii=0.5, phi_s
         direction = get_vector_between_points(klepoint, path[i+1])
         perp = direction.get_unit().get_perp()
 
-        _width = width_start + (width_end - width_start) * curr_len / path_len
+        _width = width_start + (width_end - width_start) * curr_len / trace_length
         hull.append(
             (klepoint + perp * _width/2).get_tuple()
         )
@@ -44,7 +52,7 @@ def get_routed_trace(layer, path, width_start=0.7, width_end=1, radii=0.5, phi_s
         layer, hull
     ))
 
-    return trace
+    return trace, trace_length
 
 def get_polygon_sides(path, width=10, gap=5):
     """
@@ -69,7 +77,7 @@ def get_polygon_sides(path, width=10, gap=5):
             (klepoint - perp * width/2).get_tuple()
         )
         right_hull.insert(0,
-            (klepoint - (perp * (width/2 + gap))).get_tuple()
+            (klepoint - perp * (width/2 + gap)).get_tuple()
         )
 
     # Add last point
