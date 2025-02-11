@@ -146,7 +146,7 @@ def get_interdigit_LC(layer, params=LCParams()):
     # cutout.add_element(interdigit_cap.move(200, 100))
     # cutout.flip_vertically()
 
-    return cutout
+    return cutout, trace
 
 
 import scipy.special as sp

@@ -132,10 +132,13 @@ lcp.interdigit_cap_L = cL
 lcp.meander_height = cL + 15
 lcp.meander_L = mL
 lcp.meander_N = 6
-resonator = get_interdigit_LC(layers["SC"], lcp)
+lcp.cutout_width = 500
+cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
+
+resonator.move(200, -25)
 
 layout.add_element(
-    resonator
+    cutout.move(750, 3900)
 )
 
 layout.build_to_file(
