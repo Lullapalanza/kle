@@ -96,7 +96,7 @@ def get_interdigit_LC(layer, params=LCParams()):
     Wm = params.meander_W
     turn_len = (params.meander_L - params.meander_offset*2 - params.meander_height) / (params.meander_N + 2)
     turn_height = params.meander_height / (params.meander_N + 1)
-    print(turn_height)
+    # print(turn_height)
     
     def get_path(tlen, theight):
         path = [
@@ -138,6 +138,8 @@ def get_interdigit_LC(layer, params=LCParams()):
     
     trace, tr_len = get_routed_trace(layer, path, width_start=W, width_end=W, radii=3)
     
+    print("tr, len:", tr_len)
+
     trace.add_element(interdigit_cap)
     trace.move(200, 100)
 
@@ -162,5 +164,7 @@ def get_impedance(center_width, gap, L_sheet, eps):
 
     cap_per_len = 2 * eps_0 * (1+eps) * K/Kbrim
     ind_per_len = 0.25 * mu_0 * Kbrim/K
+
+    center_width = center_width * 1e-6
 
     return ((ind_per_len + L_sheet/center_width)/cap_per_len)**0.5

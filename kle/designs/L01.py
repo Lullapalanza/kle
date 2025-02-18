@@ -2,15 +2,19 @@
 Lumped element resonator samples for NbTiN
 """
 
-from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape
+from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape, KleCutOut
 from kle.layout.dot_elements import (
     get_Lazar_global_markers,
     get_dot_with_leads, DotWLeadsParams,
     get_andreev_dot_with_loop, ADParams,
 )
-from kle.layout.resonator_elements import get_cpw_port, get_interdigit_LC, get_L_length, LCParams
+from kle.layout.resonator_elements import get_cpw_port, get_interdigit_LC, get_L_length, LCParams, get_impedance
 from kle.layout.layout_trace_routing import get_routed_cpw, get_routed_trace
 from kle.layout.layout_connections import ConnectedElement
+
+
+LSHEET = 111e-12
+EPS = 11.7
 
 
 LAYER_NAMES = [
@@ -31,8 +35,8 @@ layout.add_element(border_shape.get_copy().rotate_right().move(5500, 6000))
 # layout.add_element(border_shape.get_copy().move(0, 5500))
 
 # ==== PL ===
-PL_WIDTH = 7
-PL_GAP = 4
+PL_WIDTH = 120
+PL_GAP = 2
 pl = get_routed_cpw(
     layers["SC"],
     [(0, 0),
@@ -45,14 +49,17 @@ pl = get_routed_cpw(
     radii=40
 )
 
-PORT_GAP = 47
+PORT_GAP = 3 * PL_GAP
+PORT_WIDTH = 3 * PL_WIDTH
 pl.add_element(
-    get_cpw_port(layers["SC"], PL_WIDTH, PL_GAP, port_gap=PORT_GAP, port_width=120)
+    get_cpw_port(layers["SC"], PL_WIDTH, PL_GAP, port_gap=PORT_GAP, port_width=PORT_WIDTH)
 )
 pl.add_element(
-    get_cpw_port(layers["SC"], PL_WIDTH, PL_GAP, port_gap=PORT_GAP, port_width=120).flip_horizontally().move(5080, 0)
+    get_cpw_port(layers["SC"], PL_WIDTH, PL_GAP, port_gap=PORT_GAP, port_width=PORT_WIDTH).flip_horizontally().move(5080, 0)
 )
-layout.add_element(pl.move(460, 4500))
+layout.add_element(pl.move(460, 3000))
+
+print("Probe line impedance:", get_impedance(PL_WIDTH, PL_GAP, L_sheet=LSHEET, eps=EPS))
 # ====
 
 
@@ -123,24 +130,68 @@ def get_LC(N, L=200, W=2, G=2):
 
 # layout.add_element(create_shape(layers["SC_0"], []))
 
-mL, cL = get_L_length(5e9, 1000, width=2, L_sheet=26e-12, N=5)
-print(mL, cL)
+Fs = [4.5e9, 5e9, 5.5e9, 6e9, 6.5e9, 7e9, 7.5e9]
+top_Y, bot_Y = 3080, 2620
+pos = [
+    (1000, bot_Y), (1600, top_Y), (2200, bot_Y), (2800, top_Y),
+    (3400, bot_Y), (4000, top_Y), (4600, bot_Y)
+]
+
+for f, pos in zip(Fs, pos):
+    mL, cL = get_L_length(f, 1000, width=2, L_sheet=LSHEET, N=5, eps=EPS)
+    print(mL, cL)
+
+    lcp = LCParams()
+    lcp.interdigit_cap_L = cL
+    lcp.meander_height = cL + 15
+    lcp.meander_L = mL
+    lcp.meander_N = 2
+    lcp.cutout_width = 500
+
+    lcp.interdigit_cap_W = 2.5
+    cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
+
+    resonator.move(200, -25)
+    
+    if pos[1] == bot_Y:
+        cutout.flip_vertically().move(0, 300)
+
+    layout.add_element(
+        cutout.move(*pos)
+    )
 
 
-lcp = LCParams()
-lcp.interdigit_cap_L = cL
-lcp.meander_height = cL + 15
-lcp.meander_L = mL
-lcp.meander_N = 6
-lcp.cutout_width = 500
-cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
+def get_TS(layer, bond_pad_width, bond_pad_heigth, widths, length):
+    extra = 80
+    cutout = KleCutOut(create_shape(layer, [
+        [0, 0], [2 * extra + 2 * bond_pad_width + length, 0],
+        [2 * extra + 2 * bond_pad_width + length, (1 + len(widths)) * extra + len(widths) * bond_pad_heigth],
+        [0, (1 + len(widths)) * extra + len(widths) * bond_pad_heigth]
+    ]))
+    
+    bp = create_shape(layer, [
+        [0, 0], [bond_pad_width, 0], [bond_pad_width, bond_pad_heigth], [0, bond_pad_heigth]
+    ])
+    for i, width in enumerate(widths):
+        cutout.add_element(bp.get_copy().move(extra, extra + (extra + bond_pad_heigth) * i))
+        cutout.add_element(bp.get_copy().move(extra + bond_pad_width + length, extra + (extra + bond_pad_heigth) * i))
+        cutout.add_element(
+            create_shape(layer, [
+                [0,0], [length, 0], [length, width], [0, width]
+            ]).move(extra + bond_pad_width, extra + (extra+bond_pad_heigth) * i + bond_pad_heigth/2)
+        )
+    # cutout.add_element(tss)
 
-resonator.move(200, -25)
+    return cutout
 
-layout.add_element(
-    cutout.move(750, 3900)
-)
+
+tss = get_TS(layers["SC"], 400, 200, [2, 2, 2], 50)
+
+layout.add_element(tss.get_copy().move(1000, 1000))
+layout.add_element(tss.get_copy().flip_horizontally().move(5000, 1000))
+layout.add_element(tss.get_copy().flip_vertically().move(1000, 5000))
+layout.add_element(tss.get_copy().flip_horizontally().flip_vertically().move(5000, 5000))
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/L01_20250210.gds"
+    r"/home/jyrgen/Documents/PhD/design_files/L01_111pH_11_7eps_20250214.cif"
 )

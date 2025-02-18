@@ -242,6 +242,11 @@ class KleCutOut(KleLayoutElement):
         target_cell.shapes(self.subelements[0].layer.layer).insert(override_target)
 
 
+    def get_copy(self):
+        copy = KleCutOut(self.subelements[0].get_copy())
+        for e in self.subelements[1:]:
+            copy.add_element(e.get_copy())
+        return copy
 
 
 class NotElementError(BaseException):
