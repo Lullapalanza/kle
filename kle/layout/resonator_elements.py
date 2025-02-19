@@ -37,7 +37,7 @@ def get_Z(C, L):
 def get_L_length(f, Z0, width=2, L_sheet=10e-12, N=5, eps=11.7):
     C = 1/(2 * 3.14 * f * Z0)
     L = C * Z0**2
-    print("L:", L)
+    print("L:", L, "C:", C)
 
     meander_len = L * width / L_sheet
     cap_len = C / ((eps + 1) * ((N-3) * 4.409e-18 + 9.92e-18))
@@ -153,10 +153,11 @@ def get_interdigit_LC(layer, params=LCParams()):
 
 import scipy.special as sp
 import numpy as np
-def get_impedance(center_width, gap, L_sheet, eps):
+eps_0 = 8.8542e-12
+
+def get_impedance(center_width, gap, L_sheet, eps, l=100):
     k = center_width / (center_width + 2 * gap)
     kbrim = (1-k**2)**0.5
-    eps_0 = 8.8542e-12
     mu_0 = np.pi * 4e-7
 
     K = sp.ellipk(k)
@@ -167,4 +168,63 @@ def get_impedance(center_width, gap, L_sheet, eps):
 
     center_width = center_width * 1e-6
 
+    ll = ind_per_len + L_sheet/center_width
+    cl = cap_per_len
+
+    print(ll, cl, (ll * cl)**0.5)
+    print(
+        1/(2e-6 * l) * 1/(ll * cl)**0.5
+    )
+    
     return ((ind_per_len + L_sheet/center_width)/cap_per_len)**0.5
+
+
+
+def get_coplanar_C(w, gap, eps=11.7):
+    k = gap / (gap + 2 * w)
+    k_brim = (1 - k**2)**0.5
+
+    eps_r = (eps + 1) / 2 # ish 
+    c = 2.998e8
+
+    if k <= 1/(2**0.5):
+        C = eps_r * np.log(2 * (1 + k_brim**0.5)/(1-k_brim**0.5))/(377 * np.pi * c)
+    else:
+        C = eps_r / (120 * c * np.log(2 * (1 + k**0.5)/(1-k**0.5)))
+
+    return C
+
+
+def C_air_asymmetric_stripline(w1, w2, s):
+    '''
+    Returns the capacitance through air of the Schuster resonator to the feedline.
+    '''
+    k0 = np.sqrt(s*(w1+w2+s)/((s+w1)*(s+w2)))
+    k0_prime = np.sqrt(1-k0**2)
+    K0 = sp.ellipk(k0)
+    K0_prime = sp.ellipk(k0_prime)
+    C_air = 2*eps_0*(K0_prime/K0)#**(-1)
+    return C_air
+
+
+
+def fun_k_asymmetric_stripline(w1, w2, s, h):
+    '''
+    Computes the argument of the elliptic integrals for the an asymmetric coplanar stripline
+    This is used to compute Cc in the Schuster resonator.
+    '''
+    num = np.float64((np.exp(2*np.pi*(w1+s)/h) -np.exp(2*np.pi*w1/h)) * (np.exp(2*np.pi*(w1+w2+s)/h) -1))
+    den = np.float64(np.exp(2*np.pi*(w1+w2+s)/h) -np.exp(2*np.pi*w1/h)) * (np.exp(2*np.pi*(w1+s)/h) -1)
+    return np.sqrt(num/den)
+
+
+def cap_coupling(w1, w2, gap, l, eps=11.7):
+    C_air =  C_air_asymmetric_stripline(w1, w2, gap)
+    k = fun_k_asymmetric_stripline(w1, w2, gap, 575)
+    k_prime = (1-k**2)**0.5
+    K = sp.ellipk(k)
+    K_prime = sp.ellipk(k_prime)
+
+    cap = eps_0 * eps * K_prime/K
+
+    return cap + C_air
