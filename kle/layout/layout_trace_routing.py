@@ -123,5 +123,5 @@ def get_routed_cpw(layer, path, width, gap, radii=40, phi_step=0.5):
         right_side # all the points of the hole hull on other side
     ))
 
-    return cpw
+    return cpw, distance
 

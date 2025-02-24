@@ -1,5 +1,6 @@
 import math
 import copy
+import abc
 import klayout.db as pya
 from typing import Optional, Any
 from dataclasses import dataclass
@@ -9,25 +10,42 @@ LAYOUT_DBU = 0.001 # 1 nm
 
 @dataclass
 class KleElementOrigin:
+    """
+    Class to have an origin object - multiple shapes combined together should use the same origin for
+    transformations
+    """
     x: float
     y: float
 
-    def copy(self):
+    def get_copy(self):
         return KleElementOrigin(self.x, self.y)
 
 
 @dataclass
 class KleLayer:
+    """
+    Layer object to keep track of the polarity and optional base polygon when needed
+    """
     name: str
-    polarity: int
     layer: int
     layer_base: Optional[pya.Polygon] = None
+
+    def move_base(self, x, y):
+        """
+        Move base polygon by x, y if it exists
+        """
+        if self.layer_base:
+            self.layer_base.move(x, y)
 
 
 @dataclass
 class KleLayerPoints:
+    """
+    A list of points with an origin tied to a layer that can be moved around
+    """
     layer: KleLayer
     points: list[tuple[float]]
+    
     origin: KleElementOrigin
     holding_origin: bool
 
@@ -41,8 +59,9 @@ class KleLayerPoints:
         self.origin = new_origin
         self.holding_origin = False
 
-    def build_to_cell(self, target_cell):
-        pass
+    @abc.abstractmethod
+    def build_to_cell(self) -> list[tuple[pya.Polygon, KleLayer]]:
+        raise NotImplementedError
 
     def move(self, delta_x, delta_y):
         if self.holding_origin:
@@ -87,45 +106,50 @@ class KleLayerPoints:
     def change_layer(self, new_layer):
         self.layer = new_layer
 
-@dataclass
+    def get_copy(self):
+        return KleLayerPoints(
+            layer=self.layer,
+            points=copy.deepcopy(self.points),
+            origin=self.origin.get_copy(),
+            holding_origin=False
+        )
+
+@dataclass(kw_only=True)
 class KleAnnotation(KleLayerPoints):
     text: str
 
-    def build_to_cell(self, target_cell):
-        x, y = self.points[0]
-        target_cell.shapes(self.layer.layer).insert(
-            pya.DText(self.text, x + self.origin.x, y + self.origin.y)
-        )
+    # def build_to_cell(self):
+    #     x, y = self.points[0]
+    #     target_cell.shapes(self.layer.layer).insert(
+    #         pya.DText(self.text, x + self.origin.x, y + self.origin.y)
+    #     )
 
     def get_copy(self):
         return KleAnnotation(
-            self.layer,
-            copy.deepcopy(self.points),
-            self.origin.copy(),
-            False,
-            self.text
+            layer=self.layer,
+            points=copy.deepcopy(self.points),
+            origin=self.origin.get_copy(),
+            holding_origin=False,
+            target=self.target,
+            text=self.text
         )
 
 def create_annotation(layer, text, x, y):
     return KleAnnotation(layer, [(x, y)], KleElementOrigin(0, 0), True, text)
 
 
+
+# Need to fix how everything gets inserted
+
 @dataclass
 class KleShape(KleLayerPoints):
-    def build_to_cell(self, target_cell, override_polarity=None, override_target=None):
-        polarity = override_polarity or self.layer.polarity
-        if polarity == 1:
-            target = pya.Polygon([
-                pya.Point(
-                    round((x+self.origin.x) / LAYOUT_DBU),
-                    round((y+self.origin.y) / LAYOUT_DBU)
-                ) for x, y in self.points
-            ])
-            if override_target:
-                return target
-            target_cell.shapes(self.layer.layer).insert(target)
-        elif polarity == -1:
-            target = override_target or self.layer.layer_base
+    def build_to_cell(self, target=None):
+        """
+        Build shape to target_cell,
+            if positive polarity add polygon (can overlap)
+            if negative add hole
+        """
+        if target is not None:
             target.insert_hole(
                 [
                     pya.Point(
@@ -134,14 +158,24 @@ class KleShape(KleLayerPoints):
                     ) for x, y in self.points
                 ]
             )
-        return target
+            return []
+
+        else:
+            polygon = pya.Polygon([
+                pya.Point(
+                    round((x+self.origin.x) / LAYOUT_DBU),
+                    round((y+self.origin.y) / LAYOUT_DBU)
+                ) for x, y in self.points
+            ])
+
+        return [(polygon, self.layer), ]
 
     def get_copy(self):
         return KleShape(
-            self.layer,
-            copy.deepcopy(self.points),
-            self.origin.copy(),
-            False,
+            layer=self.layer,
+            points=copy.deepcopy(self.points),
+            origin=self.origin.get_copy(),
+            holding_origin=False,
         )
 
 def create_shape(layer, points):
@@ -150,7 +184,7 @@ def create_shape(layer, points):
 
 class KleLayoutElement:
     """
-    Base element in layout
+    Base abstract element in layout - can hold shapes or other elements as subelements
     """
     def __init__(self):
         self.subelements = []
@@ -183,9 +217,13 @@ class KleLayoutElement:
         for se in subelements:
             self.add_element(se)
 
-    def build_to_cell(self, target_cell, override_polarity=None, override_target=None):
+    def build_to_cell(self, target=None):
+        polygons_to_add = []
         for subelement in self.subelements:
-            subelement.build_to_cell(target_cell, override_polarity, override_target)
+            elems = subelement.build_to_cell(target)
+            polygons_to_add.extend(elems)
+        return polygons_to_add
+
 
     def move(self, x, y):
         if self.holding_origin:
@@ -230,17 +268,18 @@ class KleCutOut(KleLayoutElement):
     def __init__(self, positive_elem):
         super().__init__()
         self.add_element(positive_elem)
+    
+    def build_to_cell(self, target=None):
+        if target is not None:
+            print("WARNING, TARGET FOR CUTOUT")
 
+        target, layer = self.subelements[0].build_to_cell()[0]
 
-    # Building cutouts needs to be fixed, insert should happen after everything else
-    def build_to_cell(self, target_cell):
-        override_target = self.subelements[0].build_to_cell(target_cell, override_target=True)
-
+        polygons_to_add = [(target, layer)]
         for subelement in self.subelements[1:]:
-            subelement.build_to_cell(target_cell, -1, override_target)
-
-        target_cell.shapes(self.subelements[0].layer.layer).insert(override_target)
-
+            elems = subelement.build_to_cell(target)
+            polygons_to_add.extend(elems)
+        return polygons_to_add
 
     def get_copy(self):
         copy = KleCutOut(self.subelements[0].get_copy())
@@ -260,25 +299,24 @@ class KleLayout:
 
         self.layers = {}
         for i, layer in enumerate(layer_names):
-            polarity = -1 if layer[0] == "-" else 1
-            layer_name = layer.strip("-")
-
-            self.layers[layer_name] = KleLayer(
-                layer_name,
-                polarity,
-                self.layout.layer(i, 0, layer_name)
-            )
-
-            # Make a base layer if polarity is negative
-            if polarity == -1:
-                layer_base = pya.Polygon(
+            if layer[0] == "-":
+                target = pya.Polygon(
                     [pya.Point(x, y) for x, y in [
                         (0, 0), (width / LAYOUT_DBU, 0),
                         (width/ LAYOUT_DBU, height / LAYOUT_DBU),
                         (0, height / LAYOUT_DBU)
                     ]]
                 )
-                self.layers[layer_name].layer_base = layer_base
+            else:
+                target = None
+
+            layer_name = layer.strip("-")
+
+            self.layers[layer_name] = KleLayer(
+                layer_name,
+                self.layout.layer(i, 0, layer_name),
+                layer_base=target
+            )
 
         self.elements_to_build = []
 
@@ -292,10 +330,13 @@ class KleLayout:
 
     def build(self):
         for element in self.elements_to_build:
-            element.build_to_cell(self.main_cell)
+            # print(element)
+            # print(element.build_to_cell())
+            for poly, layer in element.build_to_cell():
+                self.main_cell.shapes(layer.layer).insert(poly)
 
         for kle_layer in self.layers.values():
-            if kle_layer.polarity == -1:
+            if kle_layer.layer_base is not None:
                 self.main_cell.shapes(
                     kle_layer.layer
                 ).insert(kle_layer.layer_base)

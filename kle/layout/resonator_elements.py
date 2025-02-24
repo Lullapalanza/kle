@@ -2,6 +2,7 @@ from kle.layout.layout import KleLayoutElement, create_shape, KleCutOut
 from kle.layout.layout_trace_routing import get_smoothed_path, get_routed_cpw, get_routed_trace
 from dataclasses import dataclass
 
+import numpy as np
 
 def get_cpw_port(layer, connection_width, connection_gap, port_gap=10, port_width=80, port_length=80, taper_length=80):
     port = KleLayoutElement()
@@ -18,6 +19,11 @@ def get_cpw_port(layer, connection_width, connection_gap, port_gap=10, port_widt
     port.add_element(top_gap.get_copy())
     port.add_element(top_gap.get_copy().flip_vertically())
     
+    side_gap = create_shape(layer, [
+        (0, -port_width/2 - port_gap), (-port_gap, -port_width/2 - port_gap), (-port_gap, port_width/2 + port_gap), (0, port_width/2 + port_gap)
+    ]).move(-taper_length - port_length, 0)
+    port.add_element(side_gap)
+
     return port
 
 
@@ -33,6 +39,12 @@ def get_f(C, L):
 
 def get_Z(C, L):
     return (L/C)**0.5
+
+def get_resonator_LC(f, Z0):
+    C = 1/(2 * np.pi * f * Z0)
+    L = C * Z0**2
+
+    return L, C
 
 def get_L_length(f, Z0, width=2, L_sheet=10e-12, N=5, eps=11.7):
     C = 1/(2 * 3.14 * f * Z0)
@@ -136,7 +148,7 @@ def get_interdigit_LC(layer, params=LCParams()):
     
     path = get_path(turn_len, turn_height)
     
-    trace, tr_len = get_routed_trace(layer, path, width_start=W, width_end=W, radii=3)
+    trace, tr_len = get_routed_trace(layer, path, width_start=Wm, width_end=Wm, radii=3)
     
     print("tr, len:", tr_len)
 
@@ -155,7 +167,7 @@ import scipy.special as sp
 import numpy as np
 eps_0 = 8.8542e-12
 
-def get_impedance(center_width, gap, L_sheet, eps, l=100):
+def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100):
     k = center_width / (center_width + 2 * gap)
     kbrim = (1-k**2)**0.5
     mu_0 = np.pi * 4e-7
@@ -176,7 +188,10 @@ def get_impedance(center_width, gap, L_sheet, eps, l=100):
         1/(2e-6 * l) * 1/(ll * cl)**0.5
     )
     
-    return ((ind_per_len + L_sheet/center_width)/cap_per_len)**0.5
+    imp = (ll/cl)**0.5
+    freq = 1/(ll * cl)**0.5 * (1/(2e-6 * l)) 
+
+    return imp, freq
 
 
 
@@ -227,4 +242,4 @@ def cap_coupling(w1, w2, gap, l, eps=11.7):
 
     cap = eps_0 * eps * K_prime/K
 
-    return cap + C_air
+    return (cap + C_air) * l * 1e-6
