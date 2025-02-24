@@ -118,11 +118,11 @@ class KleLayerPoints:
 class KleAnnotation(KleLayerPoints):
     text: str
 
-    # def build_to_cell(self):
-    #     x, y = self.points[0]
-    #     target_cell.shapes(self.layer.layer).insert(
-    #         pya.DText(self.text, x + self.origin.x, y + self.origin.y)
-    #     )
+    def build_to_cell(self, target=None):
+        x, y = self.points[0]
+        return [
+            (pya.DText(self.text, x + self.origin.x, y + self.origin.y), self.layer)
+        ]
 
     def get_copy(self):
         return KleAnnotation(
@@ -130,7 +130,6 @@ class KleAnnotation(KleLayerPoints):
             points=copy.deepcopy(self.points),
             origin=self.origin.get_copy(),
             holding_origin=False,
-            target=self.target,
             text=self.text
         )
 
@@ -330,8 +329,6 @@ class KleLayout:
 
     def build(self):
         for element in self.elements_to_build:
-            # print(element)
-            # print(element.build_to_cell())
             for poly, layer in element.build_to_cell():
                 self.main_cell.shapes(layer.layer).insert(poly)
 
