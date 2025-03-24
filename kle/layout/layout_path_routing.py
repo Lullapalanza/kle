@@ -89,6 +89,7 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
         ).get_unit()
 
         perp_1, perp_2 = dir_1.get_perp(), dir_2.get_perp()
+        # print(perp_1, perp_2)
 
         alpha = math.acos(dir_1 * (dir_2 * -1))
         d = float(radii / math.tan(alpha/2))
@@ -108,11 +109,14 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
         else:
             phi = math.acos(round(prev_c_point.x - center_r.x, 3)/radii)
 
+        smooth_path.append(point - radii * dir_1)
+        # print(point - radii * dir_1)
+        
         curr_point = KlePoint(
             center_r.x + radii * math.cos(phi),
             center_r.y - sign * radii * math.sin(phi)
         )
-        smooth_path.append(curr_point) 
+        # smooth_path.append(curr_point) 
 
         while math.sqrt((curr_point - next_c_point).x**2 + (curr_point - next_c_point).y**2) > (radii * phi_step / (2 * math.pi)):
             phi = phi - phi_step/(2*math.pi)
@@ -121,6 +125,11 @@ def smooth_path(course_path, radii=20, phi_step=0.5):
                 center_r.y - sign * radii * math.sin(phi)
             )
             smooth_path.append(curr_point)
+            # print(phi)
+        
+        smooth_path.append(point + radii * dir_2)
+    
+    smooth_path = smooth_path[:-2:]
     smooth_path.append(course_path[-1])
 
     return smooth_path

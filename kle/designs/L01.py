@@ -13,7 +13,7 @@ from kle.layout.layout_trace_routing import get_routed_cpw, get_routed_trace
 from kle.layout.layout_connections import ConnectedElement
 
 
-LSHEET = 111e-12
+LSHEET = 90e-12
 EPS = 11.7
 
 
@@ -36,7 +36,7 @@ layout.add_element(border_shape.get_copy().rotate_right().move(5500, 6000))
 
 # ==== PL ===
 PL_WIDTH = 120
-PL_GAP = 2
+PL_GAP = 2.5
 pl, pl_length = get_routed_cpw(
     layers["SC"],
     [(0, 0),
@@ -69,8 +69,6 @@ print("Probe line impedance:", pl_imp, "freq:", pl_freq/1e9)
 
 layout.add_element(pl.move(460 + 500 + 250, 3000))
 # ====
-
-
 # Magic
 # layout.add_element(create_shape(layers["SC_0"], [
 #     [0, 0], [0, 6000], [6000, 6000], [6000, 0]
@@ -162,7 +160,8 @@ for f, pos in zip(Fs, pos):
 
     cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
 
-    resonator.move(80, 25)
+    # resonator.move(80, 25)
+    resonator.move(80, -30)
     
     if pos[1] == bot_Y:
         cutout.flip_vertically().move(0, 300)
@@ -200,11 +199,11 @@ tss = get_TS(layers["SC"], 400, 200, [2, 1.5, 1], 50)
 
 layout.add_element(tss.get_copy().move(1000, 500))
 layout.add_element(tss.get_copy().flip_horizontally().move(5000, 500))
-# layout.add_element(tss.get_copy().flip_vertically().move(1000, 5000))
+layout.add_element(tss.get_copy().move(2490, 500))
 # layout.add_element(tss.get_copy().flip_horizontally().flip_vertically().move(5000, 5000))
 
-pl.move(0, -500)
+pl.move(0, -300)
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/L01_111pH_11_7eps_20250219_test.cif"
+    r"/home/jyrgen/Documents/PhD/design_files/L01_90pH_11_7eps_20250226.cif"
 )

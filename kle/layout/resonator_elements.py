@@ -115,6 +115,7 @@ def get_interdigit_LC(layer, params=LCParams()):
             [0, -Wm/2 + (params.meander_height - L)/2],
             [-10, -Wm/2 + (params.meander_height - L)/2],
             [-10, -Wm/2],
+            # [-15, -Wm/2],
             [-params.meander_offset - tlen, -Wm/2],
             [-params.meander_offset - tlen, -Wm/2 + theight]
         ]
@@ -132,6 +133,8 @@ def get_interdigit_LC(layer, params=LCParams()):
 
         path.extend([
             [-params.meander_offset - tlen, Wm/2 + params.meander_height + G],
+            # [-45, Wm/2 + params.meander_height + G],
+            # [-15, Wm/2 + params.meander_height + G],
             [-10, Wm/2 + params.meander_height + G],
             [-10, Wm/2 + params.meander_height/2 + L/2 + G],
             [-1, Wm/2 + params.meander_height/2 + L/2 + G],
@@ -182,11 +185,6 @@ def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100):
 
     ll = ind_per_len + L_sheet/center_width
     cl = cap_per_len
-
-    print(ll, cl, (ll * cl)**0.5)
-    print(
-        1/(2e-6 * l) * 1/(ll * cl)**0.5
-    )
     
     imp = (ll/cl)**0.5
     freq = 1/(ll * cl)**0.5 * (1/(2e-6 * l)) 
