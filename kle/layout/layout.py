@@ -11,7 +11,7 @@ LAYOUT_DBU = 0.001 # 1 nm
 @dataclass
 class KleElementOrigin:
     """
-    Class to have an origin object - multiple shapes combined together should use the same origin for
+    Class instance of origin (x, y) - multiple shapes combined together should use the same origin for
     transformations
     """
     x: float
@@ -41,7 +41,7 @@ class KleLayer:
 @dataclass
 class KleLayerPoints:
     """
-    A list of points with an origin tied to a layer that can be moved around
+    A list of points and an origin tied to a layer
     """
     layer: KleLayer
     points: list[tuple[float]]

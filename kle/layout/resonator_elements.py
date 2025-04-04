@@ -170,7 +170,7 @@ import scipy.special as sp
 import numpy as np
 eps_0 = 8.8542e-12
 
-def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100):
+def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100, lambda_frac=0.5):
     k = center_width / (center_width + 2 * gap)
     kbrim = (1-k**2)**0.5
     mu_0 = np.pi * 4e-7
@@ -187,9 +187,9 @@ def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100):
     cl = cap_per_len
     
     imp = (ll/cl)**0.5
-    freq = 1/(ll * cl)**0.5 * (1/(2e-6 * l)) 
+    freq = 1/(ll * cl)**0.5 * (1/(1e-6 * l)) 
 
-    return imp, freq
+    return imp, freq * lambda_frac
 
 
 
