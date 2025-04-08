@@ -1,4 +1,4 @@
-from kle.layout.layout import KleLayoutElement, create_shape
+from kle.layout.layout import KleLayoutElement, create_shape, create_ref
 from kle.layout.layout_path_routing import (
     KlePoint,
     smooth_path,
@@ -51,6 +51,10 @@ def get_routed_trace(layer, path, width_start=0.7, width_end=1, radii=0.5, phi_s
     trace.add_element(create_shape(
         layer, hull
     ))
+
+    ref_start = create_ref(*(path[0].get_tuple()))
+    ref_end = create_ref(*path[-1].get_tuple())
+    trace.add_elements([ref_start, ref_end])
 
     return trace, trace_length
 

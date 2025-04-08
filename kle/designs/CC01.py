@@ -1,7 +1,7 @@
 """
 Current controlled resonators tests (planar, no ald like things)
 """
-from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape, KleCutOut
+from kle.layout.layout import KleLayout, KleLayoutElement, KleShape, create_shape, KleCutOut, create_ref
 from kle.layout.dot_elements import (
     get_Lazar_global_markers,
     get_dot_with_leads, DotWLeadsParams,
@@ -116,25 +116,40 @@ def get_interdigit_cap(layer, W, G, L, N):
 
 def get_meander_path(height, step, N):
     path = [
-        (0, 0),
-        (step, 0)
+        (0, 0)
     ]
     for i in range(N):
         if i%2 == 0:
             path.extend([
-                [step * (i + 1), height/2],
-                [step * (i + 2), height/2]
+                (height, -step * i),
+                (height, -step * (i + 1))
             ])
         else:
             path.extend([
-                [step * (i + 1), -height/2],
-                [step * (i + 2), -height/2]
+                (0, -step * i),
+                (0, -step * (i + 1))
             ])
+
+    path = path[:-1] + [(height * ((i+1)%2), -step * (i + 0.5)), path[-1]]
 
     return path
 
+
+def get_fishbone_cap():
+    cutout_width, cutout_height = 145, 224
+    bowtie = KleCutOut(create_shape(layers["SC"], [
+        (0, 0), (0, -cutout_height), (-cutout_width, -cutout_height), (-cutout_width, 0)
+    ]))
+
+    intercap, cap = get_interdigit_cap(layers["SC"], 5, 2, 100, 21)
+    bowtie.add_element(intercap.move(-138-7, -107*2 - 5))
+    bowtie.add_element(intercap.get_copy().flip_vertically().move(0, -232 + 8))
+
+    return bowtie
+
+
 def get_one_stage_of_bowtie():
-    cutout_width, cutout_height = 458+7, 224
+    cutout_width, cutout_height = 465, 224
     bowtie = KleCutOut(create_shape(layers["SC"], [
         (0, 0), (0, -cutout_height), (-cutout_width, -cutout_height), (-cutout_width, 0)
     ]))
@@ -171,58 +186,166 @@ def get_one_stage_of_bowtie():
     inductor, len = get_routed_trace(layers["SC"], ind_f_path, width_start=2, width_end=2, radii=8)
     tot_inductance = len * LSHEET/2
     bowtie.add_element(inductor.move(-138-7, -5 - 107))
+    connection_ref = create_ref(0, -112)
 
+    bowtie.add_element(connection_ref)
     print("bowtiecap", cap*2e12, "pF, bowtie Ind", tot_inductance*1e9, "nH")
 
-    return bowtie, cap*2, tot_inductance
-
-bowtie, bt_cap, bt_ind = get_one_stage_of_bowtie()
-bt_cap = 0.5e-12
-filter_ind = calculate_filter_react(bt_cap, bt_ind, 5.11e9 * 6.28)/(6.28 * 5.11e9)
-print("filter_ind", filter_ind)
-print("freq", 1/(3.5385704175513093e-14 * parall(3.5385704175513096e-08, filter_ind))**0.5/(2e9 * 3.14))
-
-filter = KleLayoutElement()
-
-filter.add_element(bowtie)
-filter.add_element(bowtie.get_copy().move(-465, 0))
-filter.add_element(bowtie.get_copy().move(-465 * 2, 0))
-filter.add_element(get_cpw_port(
-    layers["SC"], connection_width=10, connection_gap=2, port_gap=10, port_length=160, port_width=160, taper_length=80
-).flip_horizontally().move(0, -112))
+    return bowtie, connection_ref
 
 
-# Resonator 0 - 2 bowtie filters
-cutoutHeigh, cutoutWidth = 400, 400
-res0 = KleCutOut(create_shape(layers["SC"], [
-    (0, 0), (cutoutWidth, 0), (cutoutWidth, -cutoutHeigh), (0, -cutoutHeigh)
-]))
+def get_grounded_LC_with_split_L(freq_target, meander_offset=10):
+    interdigit_W = 6
+    mL, cL = get_L_length(freq_target, 1000, 2, LSHEET, EPS)
+    mL, cL = round(mL, 3), round(cL, 3)
 
-freq = 4.5e9
-mL, cL = get_L_length(freq, 1000, width=2, L_sheet=LSHEET, N=11, eps=EPS)
-print(mL)
-capacitor, res_cap = get_interdigit_cap(layers["SC"], 5, 5, cL, 11)
+    res_cap_elem, res_cap_val = get_interdigit_cap(layers["SC"], interdigit_W, interdigit_W, cL, 11)
 
-res0.add_element(capacitor.rotate_by_angle(90).move(5, -50))
+    # Make 2 meanders,
+    double_mL = 2 * mL
+    path_height = 100
 
-path_height = 107
-meand_path = get_meander_path(path_height, 23, 13)
-meand_path.append((400-cL-15, path_height/2))
-gnd_to_cap_trace, gndClen = get_routed_trace(
-    layers["SC"],
-    meand_path,
-    width_start=2,
-    width_end=2,
-    radii=8
-)
-print(mL * 2, gndClen)
-print(gndClen * LSHEET/2)
+    N_meander = 13
+    meander_path = get_meander_path(path_height, 23, N_meander)
+    res_meander_elem, res_meander_len = get_routed_trace(
+        layers["SC"],
+        [(-meander_offset, 0)]+meander_path,
+        width_start=2,
+        width_end=2,
+        radii=8
+    )
+    heigth_diff = (res_meander_len - double_mL) / N_meander
+    meander_path = get_meander_path(path_height - heigth_diff, 23, N_meander)
+    res_meander_elem, res_meander_len = get_routed_trace(
+        layers["SC"],
+        [(-meander_offset, 0)]+meander_path,
+        width_start=2,
+        width_end=2,
+        radii=8
+    )
+    print(res_meander_len, double_mL)
+
+    resonator = KleCutOut(create_shape(layers["SC"], [
+        (-200, 0), (200 + 105, 0), (305, -23 * N_meander - cL - interdigit_W - 10),
+        (-200, -23 * N_meander - cL - interdigit_W - 10)
+    ]))
+
+    resonator.add_element(res_cap_elem.move(0, -cL -interdigit_W*2))
+    res_meander_elem.move(0, -cL - 10)
+    meander_left = res_meander_elem.get_copy().flip_horizontally().move(-meander_offset, -interdigit_W)
+    meander_right = res_meander_elem.move(21 * interdigit_W + meander_offset, -interdigit_W)
+
+    resonator.add_elements([meander_left, meander_right])
+
+    return resonator, meander_left.subelements[-1], meander_right.subelements[-1]
 
 
-res0.add_element(gnd_to_cap_trace.move(cL + 15, -50 - 105/2))
-res0.add_element(filter.rotate_by_angle(90).move(400-112+32, -1795))
-layout.add_element(res0.move(1000, 2937.5))
+FREQ = [5e9, 5.5e9, 6e9, 6.5e9, 7e9]
+OFFSETS = [10, 70, 10, 70, 10]
+BOWTIES = [
+    [2, 0], [2, 2], [0, 0], [2, 2], [0, 2]
+]
+POS = [
+    (1400 + i*775, 2937.5 - 20) for i in range(len(FREQ))
+]
 
+for f, pos, offset, bowties in zip(FREQ, POS, OFFSETS, BOWTIES):
+    split_L_LC, meander_left_end_ref, meander_right_end_ref = get_grounded_LC_with_split_L(f, meander_offset=offset)
+    layout.add_element(split_L_LC.move(*pos))
+
+    if bowties[0] > 0:
+        bt_elem, ref = get_one_stage_of_bowtie()
+        bt_elem.rotate_left()
+
+        meander_end = meander_left_end_ref.get_absolute_points()[0]
+        bowtie_end = ref.get_absolute_points()[0]
+
+        for i in range(bowties[0]):
+            layout.add_element(bt_elem.get_copy().move(
+                meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] - i * 465
+            ))
+
+        endcap = get_fishbone_cap()
+        endcap.add_element(get_cpw_port(
+            layers["SC"], connection_width=10,
+            connection_gap=2, port_gap=10,
+            port_length=160, port_width=160, taper_length=80
+        ).move(-145, -112))
+        endcap.rotate_left()
+        layout.add_element(endcap.move(
+            meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] - (i+1) * 465
+        ))
+        
+
+
+    if bowties[1] > 0:
+        bt_elem, ref = get_one_stage_of_bowtie()
+        bt_elem.rotate_left()
+
+        meander_end = meander_right_end_ref.get_absolute_points()[0]
+        bowtie_end = ref.get_absolute_points()[0]
+
+        for i in range(bowties[1]):
+            layout.add_element(bt_elem.get_copy().move(
+                meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] - i * 465
+            ))
+        endcap = get_fishbone_cap()
+        endcap.add_element(get_cpw_port(
+            layers["SC"], connection_width=10,
+            connection_gap=2, port_gap=10,
+            port_length=160, port_width=160, taper_length=80
+        ).move(-145, -112))
+        endcap.rotate_left()
+        layout.add_element(endcap.move(
+            meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] - (i+1) * 465
+        ))
+
+
+
+# Top Side (floating LC and fishbone filters)====
+# FREQ = [5.25e9, 5.75e9, 6.25e9, 6.75e9, 7.25e9]
+# POS = [
+#     (1400 + i*775, 3060) for i in range(len(FREQ))
+# ]
+
+FREQ = [5.25e9]
+POS = [(0, 0)]
+
+for f, pos in zip(FREQ, POS):
+    mL, cL = get_L_length(f, 1000, width=2, L_sheet=LSHEET, N=11, eps=EPS)
+    mL, cL = round(mL, 3), round(cL, 3)
+    print(mL, cL)
+
+    lcp = LCParams()
+    lcp.interdigit_cap_L = cL
+    lcp.interdigit_cap_N = 11
+    lcp.interdigit_cap_G = 5
+    lcp.interdigit_cap_W = 5
+
+    lcp.meander_height = cL + 15
+    lcp.meander_L = mL
+    lcp.meander_N = 0
+    lcp.cutout_width = 400
+    lcp.cutout_height = 1400
+
+    cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
+    resonator.rotate_right().move(65, 305 + 20)
+
+    meander_path = get_meander_path(100, 23, 23)
+    meander_path = meander_path + [
+        (meander_path[-1][0] + 10, meander_path[-1][1]),
+        (meander_path[-1][0] + 20, meander_path[-1][1])
+    ]
+    meander, meander_len = get_routed_trace(
+        layers["SC"], meander_path, width_start=2,
+        width_end=2, radii=5
+    )
+    cutout.add_element(meander.move(47.5, 530 + 120))
+    print("meander_ind", meander_len * LSHEET/2)
+
+    layout.add_element(cutout.move(*pos))
+
+# === End top
 
 
 layout.build_to_file(

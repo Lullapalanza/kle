@@ -115,6 +115,23 @@ class KleLayerPoints:
         )
 
 @dataclass(kw_only=True)
+class KleReference(KleLayerPoints):
+    def build_to_cell(self, target=None):
+        return []
+
+    def get_copy(self):
+        return KleReference(
+            layer=self.layer,
+            points=copy.deepcopy(self.points),
+            origin=self.origin.get_copy(),
+            holding_origin=False,
+        )
+
+def create_ref(x, y):
+    return KleReference(None, [(x, y)], KleElementOrigin(0, 0), True)
+
+
+@dataclass(kw_only=True)
 class KleAnnotation(KleLayerPoints):
     text: str
 
