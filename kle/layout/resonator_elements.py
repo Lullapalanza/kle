@@ -107,39 +107,37 @@ def get_interdigit_LC(layer, params=LCParams()):
     # meander
     Wm = params.meander_W
     turn_len = (params.meander_L - params.meander_offset*2 - params.meander_height) / (params.meander_N + 2)
-    turn_height = params.meander_height / (params.meander_N + 1)
-    # print(turn_height)
+    
+    y_start = (params.meander_height - L - Wm)/2
+    y_stop = (params.meander_height + L + Wm + G * 2)/2
+    turn_height = (y_stop-y_start) / (params.meander_N + 1)
     
     def get_path(tlen, theight):
         path = [
-            [0, -Wm/2 + (params.meander_height - L)/2],
-            [-10, -Wm/2 + (params.meander_height - L)/2],
-            [-10, -Wm/2],
-            # [-15, -Wm/2],
-            [-params.meander_offset - tlen, -Wm/2],
-            [-params.meander_offset - tlen, -Wm/2 + theight]
+            [0, y_start],
+            [-10, y_start],
+            [-params.meander_offset - tlen, y_start],
+            [-params.meander_offset - tlen, y_start + theight]
         ]
+        i = 0
         for i in range(params.meander_N):
             if i%2 == 0:
                 path.extend([
-                    [-params.meander_offset, -Wm/2 + theight * (i+1)],
-                    [-params.meander_offset, -Wm/2 + theight * (i+2)]
+                    [-params.meander_offset, y_start + theight * (i+1)],
+                    [-params.meander_offset, y_start + theight * (i+2)]
                 ])
             else:
                 path.extend([
-                    [-params.meander_offset - tlen, -Wm/2 + theight * (i+1)],
-                    [-params.meander_offset - tlen, -Wm/2 + theight * (i+2)]
+                    [-params.meander_offset - tlen, y_start + theight * (i+1)],
+                    [-params.meander_offset - tlen, y_start + theight * (i+2)]
                 ])
 
         path.extend([
-            [-params.meander_offset - tlen, Wm/2 + params.meander_height + G],
-            # [-45, Wm/2 + params.meander_height + G],
-            # [-15, Wm/2 + params.meander_height + G],
-            [-10, Wm/2 + params.meander_height + G],
-            [-10, Wm/2 + params.meander_height/2 + L/2 + G],
-            [-1, Wm/2 + params.meander_height/2 + L/2 + G],
-            [0, Wm/2 + params.meander_height/2 + L/2 + G]
+            [-10, y_stop],
+            [-1, y_stop],
+            [0, y_stop]
         ])
+
         return path
     
     path = get_path(turn_len, turn_height)
@@ -159,9 +157,6 @@ def get_interdigit_LC(layer, params=LCParams()):
     trace.move(200, 100)
 
     cutout.add_element(trace)
-    # cutout.add_element(trace.move(200, 100))
-    # cutout.add_element(interdigit_cap.move(200, 100))
-    # cutout.flip_vertically()
 
     return cutout, trace
 

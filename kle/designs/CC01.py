@@ -308,10 +308,14 @@ for f, pos, offset, bowties in zip(FREQ, POS, OFFSETS, BOWTIES):
 #     (1400 + i*775, 3060) for i in range(len(FREQ))
 # ]
 
-FREQ = [5.25e9]
-POS = [(0, 0)]
+FREQ = [5.25e9, 5.75e9, 6.25e9, 6.75e9]
+POS = [(1300 + i*900, 2389.5 + 673) for i in range(len(FREQ))]
+RES_GAP = [35, 30, 25, 20]
+BOWTIES = [
+    [2, 0], [0, 0], [2, 2], [0, 2]
+]
 
-for f, pos in zip(FREQ, POS):
+for f, pos, res_gap, bowties in zip(FREQ, POS, RES_GAP, BOWTIES):
     mL, cL = get_L_length(f, 1000, width=2, L_sheet=LSHEET, N=11, eps=EPS)
     mL, cL = round(mL, 3), round(cL, 3)
     print(mL, cL)
@@ -325,25 +329,76 @@ for f, pos in zip(FREQ, POS):
     lcp.meander_height = cL + 15
     lcp.meander_L = mL
     lcp.meander_N = 0
-    lcp.cutout_width = 400
-    lcp.cutout_height = 1400
+    lcp.cutout_width = 600
+    lcp.cutout_height = 673
 
     cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
-    resonator.rotate_right().move(65, 305 + 20)
+    resonator.rotate_right().move(165, 305 + 20)
 
     meander_path = get_meander_path(100, 23, 23)
-    meander_path = meander_path + [
-        (meander_path[-1][0] + 10, meander_path[-1][1]),
-        (meander_path[-1][0] + 20, meander_path[-1][1])
+    meander_path = [(0, 23), (0, 15)] + meander_path[:-3] + [
+        (meander_path[-1][0] - 100, meander_path[-1][1]),
+        (meander_path[-1][0] + 80, meander_path[-1][1])
     ]
     meander, meander_len = get_routed_trace(
         layers["SC"], meander_path, width_start=2,
         width_end=2, radii=5
     )
-    cutout.add_element(meander.move(47.5, 530 + 120))
+    
+    meander_right = meander.get_copy().flip_horizontally().move(245 + 167.5 + 50 + cL, 650)
+    cutout.add_element(meander_right)
+    meander_left = meander.move(147.5 - 60, 530 + 120)
+    cutout.add_element(meander_left)
     print("meander_ind", meander_len * LSHEET/2)
-
+    resonator.move(0, -22.5)
+    resonator.move(0, res_gap)
     layout.add_element(cutout.move(*pos))
+
+    if bowties[0] > 0:
+        bt_elem, ref = get_one_stage_of_bowtie()
+        bt_elem.rotate_left()
+
+        meander_end = meander_left.subelements[-2].get_absolute_points()[0]
+        bowtie_end = ref.get_absolute_points()[0]
+
+        for i in range(bowties[0]):
+            layout.add_element(bt_elem.get_copy().flip_vertically().move(
+                meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] + i * 465
+            ))
+
+        endcap = get_fishbone_cap()
+        endcap.add_element(get_cpw_port(
+            layers["SC"], connection_width=10,
+            connection_gap=2, port_gap=10,
+            port_length=160, port_width=160, taper_length=80
+        ).move(-145, -112))
+        endcap.rotate_left()
+        layout.add_element(endcap.flip_vertically().move(
+            meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] + (i+1) * 465
+        ))
+
+    if bowties[1] > 0:
+        bt_elem, ref = get_one_stage_of_bowtie()
+        bt_elem.rotate_left()
+
+        meander_end = meander_right.subelements[-2].get_absolute_points()[0]
+        bowtie_end = ref.get_absolute_points()[0]
+
+        for i in range(bowties[1]):
+            layout.add_element(bt_elem.get_copy().flip_vertically().move(
+                meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] + i * 465
+            ))
+        endcap = get_fishbone_cap()
+        endcap.add_element(get_cpw_port(
+            layers["SC"], connection_width=10,
+            connection_gap=2, port_gap=10,
+            port_length=160, port_width=160, taper_length=80
+        ).move(-145, -112))
+        endcap.rotate_left()
+        layout.add_element(endcap.flip_vertically().move(
+            meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] + (i+1) * 465
+        ))
+
 
 # === End top
 
