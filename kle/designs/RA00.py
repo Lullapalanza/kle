@@ -64,7 +64,7 @@ print("port imp", port_imp)
 pl_imp, pl_freq = get_cpw_impedance(PL_WIDTH, PL_GAP, L_sheet=LSHEET, eps=EPS, l=pl_length + 2*PORT_LEN)
 print("Probe line impedance:", pl_imp, "freq:", pl_freq/1e9)
 
-layout.add_element(pl.move(460 + 500 + 50, 3000))
+layout.add_element(pl.move(460 + 500 + 50, 3500))
 
 print("=== PL END ===")
 # ==== PL ====
@@ -162,7 +162,7 @@ def get_one_stage_of_bowtie():
     ind_f_path.append((-320, 0))
 
     inductor, len = get_routed_trace(layers["SC"], ind_f_path, width_start=2.5, width_end=2.5, radii=8)
-    tot_inductance = len * LSHEET/2
+    tot_inductance = len * LSHEET/2.5
     bowtie.add_element(inductor.move(-138-7, -5 - 107))
     connection_ref = create_ref(0, -112)
 
@@ -172,7 +172,7 @@ def get_one_stage_of_bowtie():
     return bowtie, connection_ref
 
 def get_trace_end(path):
-    trace, _ = get_routed_trace(layers["SC"], path, width_start=2.5, width_end=2.5, radii=4)
+    trace, _ = get_routed_trace(layers["SC"], path, width_start=2.5, width_end=2.5, radii=10)
     trace_and_endpoint = KleLayoutElement()
     trace_and_endpoint.add_elements([
         create_ref(*path[-1]), trace
@@ -180,12 +180,19 @@ def get_trace_end(path):
 
     return trace_and_endpoint
 
-N_and_path = {
+N3_and_path = {
     0: [(0, 0), (-70, 0), (-70, -270 + 19.25 - 200)],
     1: [(0, 0), (-100, 0), (-250, -400), (-340 + 65.241, -400), (-350 + 65.241, -400)],
     2: [(0, 0), (-100, 0), (-350 + 65.241, 0)],
     3: [(0, 0), (-100, 0), (-250, 400), (-340 + 65.241, 400), (-350 + 65.241, 400)],
     4: [(0, 0), (-70, 0), (-70, 270 - 19.274 + 200)]
+}
+N5_and_path = {
+    0: [(0, 0), (-70, 0), (-70, -270 + 19.25 - 200)],
+    1: [(0, 0), (-100, 0), (-170, -400), (-300 + 65.241 + 50.291, -400), (-350 + 65.241 + 50.291, -400)],
+    2: [(0, 0), (-100, 0), (-350 + 65.241 + 50.291, 0)],
+    3: [(0, 0), (-100, 0), (-170, 400), (-340 + 65.241 + 50.291, 400), (-350 + 65.241 + 50.291, 400)],
+    4: [(0, 0), (-70, 0), (-70, 270 - 19.274 + 200 - 22.304)]
 }
 
 def get_cascaded_LC(f, Z0, N, distance_from_PL):
@@ -203,69 +210,163 @@ def get_cascaded_LC(f, Z0, N, distance_from_PL):
     lcp.meander_height = cL
     lcp.meander_L = mL
     lcp.meander_N = 0
-    lcp.cutout_width = 610
+    lcp.cutout_width = 610 - 30 + distance_from_PL
     lcp.cutout_height = 673 + 400
 
-    DC_connect_zero = (-73.579 + 45 + 59.26 - 35.922, 200 + 114.5 + 142.5 + 3.75 - 10)
     
     dc_endpoints = []
 
     cutout, resonators = get_interdigit_LC(layers["SC"], lcp)
-    resonators.move(45, 200 + (383.51 - 95 - 20) / 2)
+    if N == 5:
+        DC_connect_zero = (-73.579 + 45 + 59.26 - 35.922 - 50.291, 200 + 114.5 + 142.5 + 3.75 - 10)
+        resonators.move(45, 200 + (383.51 - 95 - 20) / 2)
+    elif N == 3:
+        DC_connect_zero = (-73.579 + 45 + 59.26 - 35.922, 200 + 114.5 + 142.5 + 3.75 - 10 + 35)
+        resonators.move(45, 200 + (383.51 - 95 - 20 + 70) / 2)
+    
+    cutout.add_element(create_shape(layers["SC"], [
+        (0, 0), (0, lcp.interdigit_cap_W * 3), (45, lcp.interdigit_cap_W * 3), (45, 0)
+    ]).move(45 + 501.543 - 11.543, 90 - 10 + 200 + (383.51 - 95 - 20) / 2 + (35 if N == 3 else 0)))
+
+    cutout.add_element(create_shape(layers["SC"], [
+        (0, 0), (0, lcp.interdigit_cap_W * 3), (45, lcp.interdigit_cap_W * 3), (45, 0)
+    ]).move(45 + 501.543 - 11.543, 90 + 200 + 5 + (cL + 15) * N + (383.51 - 95 - 20) / 2 + (35 if N == 3 else 0)))
+
     resonator_0 = resonators.get_copy()
 
-    trace = get_trace_end(N_and_path[0]).move(*DC_connect_zero)
-    resonators.add_element(trace)
-    dc_endpoints.append(trace.subelements[0])
-
-    
-    for i in range(1, N):
-        resonators.add_element(resonator_0.get_copy().move(0, (5 * 3 + cL) * i))
-        trace = get_trace_end(N_and_path[i]).move(*DC_connect_zero).move(0, (5 * 3 + cL) * i)
+    if N == 5:
+        trace = get_trace_end(N5_and_path[0]).move(*DC_connect_zero)
         resonators.add_element(trace)
         dc_endpoints.append(trace.subelements[0])
 
-        if i in [1, 2, 3]:
-            for n in range(3):
-                bt_elem, bt_ref = get_one_stage_of_bowtie()
-                bt_elem.flip_horizontally()
-                bt_points = bt_ref.get_absolute_points()[0]
-                dc_trace_points = trace.subelements[0].get_absolute_points()[0]
-                bt_elem.move(dc_trace_points[0] - bt_points[0] - 465 - n * (465 + 99), dc_trace_points[1] - bt_points[1])
+    if N == 5:
+        for i in range(1, N):
+            resonators.add_element(resonator_0.get_copy().move(0, (5 * 3 + cL) * i))
+            trace = get_trace_end(N5_and_path[i]).move(*DC_connect_zero).move(0, (5 * 3 + cL) * i)
+            resonators.add_element(trace)
+            dc_endpoints.append(trace.subelements[0])
+
+            if i in [1, 2, 3]:
+                for n in range(3):
+                    bt_elem, bt_ref = get_one_stage_of_bowtie()
+                    bt_elem.flip_horizontally()
+                    bt_points = bt_ref.get_absolute_points()[0]
+                    dc_trace_points = trace.subelements[0].get_absolute_points()[0]
+                    bt_elem.move(dc_trace_points[0] - bt_points[0] - 465 - n * (465 + 99), dc_trace_points[1] - bt_points[1])
+                    
+                    resonators.add_element(bt_elem)
                 
-                resonators.add_element(bt_elem)
+                port_connect = (dc_trace_points[0] - bt_points[0] - (n+1) * (465 + 99), dc_trace_points[1] - bt_points[1]-112)
 
-        if i in [4]:
-            extra_parts = KleLayoutElement()
+                resonators.add_element(get_cpw_port(
+                    layers["SC"], connection_width=12,
+                    connection_gap=2, port_gap=10,
+                    port_length=160, port_width=160, taper_length=80
+                ).move(*port_connect))
 
-            extra_conn = KleCutOut(create_shape(layers["SC"], [(0, 0), (400, 0), (400, 454), (0, 454)]))
-            extra_parts.add_element(extra_conn.move(-290, 1073))
-            start_point = dc_endpoints[i].get_absolute_points()[0]
-            extra_path = [start_point, (start_point[0], start_point[1] + 320), (start_point[0] - 214.911, start_point[1] + 320)]
-            extra_trace, _ = get_routed_trace(layers["SC"], extra_path, width_start=2.5, width_end=2.5, radii=10)
-            extra_conn.add_element(extra_trace)
+            if i in [4]:
+                extra_parts = KleLayoutElement()
 
-            endpoint = (start_point[0] - 214.911, start_point[1] + 320)
-            for n in range(3):
-                bt_elem, bt_ref = get_one_stage_of_bowtie()
-                bt_elem.flip_horizontally()
-                bt_points = bt_ref.get_absolute_points()[0]
-                dc_trace_points = endpoint
-                bt_elem.move(dc_trace_points[0] - bt_points[0] - 465 - n * (465 + 99), dc_trace_points[1] - bt_points[1])
+                extra_conn = KleCutOut(create_shape(layers["SC"], [(0, 0), (400, 0), (400, 454), (0, 454)]))
+                extra_parts.add_element(extra_conn.move(-290, 1073))
+                start_point = dc_endpoints[i].get_absolute_points()[0]
+                extra_path = [start_point, (start_point[0], start_point[1] + 320), (start_point[0] - 214.911 + 70, start_point[1] + 320), (start_point[0] - 214.911 + 0.152 + 50.291, start_point[1] + 320)]
+                extra_trace, _ = get_routed_trace(layers["SC"], extra_path, width_start=2.5, width_end=2.5, radii=10)
+                extra_conn.add_element(extra_trace)
+
+                endpoint = (start_point[0] - 214.911 + 0.152 + 50.291, start_point[1] + 320)
+                for n in range(3):
+                    bt_elem, bt_ref = get_one_stage_of_bowtie()
+                    bt_elem.flip_horizontally()
+                    bt_points = bt_ref.get_absolute_points()[0]
+                    dc_trace_points = endpoint
+                    bt_elem.move(dc_trace_points[0] - bt_points[0] - 465 - n * (465 + 99), dc_trace_points[1] - bt_points[1])
+                    
+                    extra_parts.add_element(bt_elem)
                 
-                extra_parts.add_element(bt_elem)
+                resonators.add_element(extra_parts)
+                port_connect = (dc_trace_points[0] - bt_points[0] - (n+1) * (465 + 99), dc_trace_points[1] - bt_points[1]-112)
+                
+                extra_parts.add_element(get_cpw_port(
+                    layers["SC"], connection_width=12,
+                    connection_gap=2, port_gap=10,
+                    port_length=160, port_width=160, taper_length=80
+                ).move(*port_connect))
+
+                
             
-            resonators.add_element(extra_parts)
-        
-    # add for 0
-    resonators.add_element(extra_parts.get_copy().flip_vertically().move(0, 1073))
-        
+        # add for 0
+        resonators.add_element(extra_parts.get_copy().flip_vertically().move(0, 1073))
+            
+        resonators.move(290, 0)
 
-    resonators.move(310 - distance_from_PL, 0)
 
-    # print(dc_endpoints)
+        return cutout
+    
+    else:
+        for i in range(0, N):
+            if i != 0:
+                resonators.add_element(resonator_0.get_copy().move(0, (5 * 3 + cL) * i))
+            trace = get_trace_end(N3_and_path[i + 1]).move(*DC_connect_zero).move(0, (5 * 3 + cL) * i)
+            resonators.add_element(trace)
+            dc_endpoints.append(trace.subelements[0])
 
-    return cutout
+            if i in [0, 1, 2]:
+                for n in range(3):
+                    bt_elem, bt_ref = get_one_stage_of_bowtie()
+                    bt_elem.flip_horizontally()
+                    bt_points = bt_ref.get_absolute_points()[0]
+                    dc_trace_points = trace.subelements[0].get_absolute_points()[0]
+                    bt_elem.move(dc_trace_points[0] - bt_points[0] - 465 - n * (465 + 99), dc_trace_points[1] - bt_points[1])
+                    
+                    resonators.add_element(bt_elem)
+                
+                port_connect = (dc_trace_points[0] - bt_points[0] - (n+1) * (465 + 99), dc_trace_points[1] - bt_points[1]-112)
+
+                resonators.add_element(get_cpw_port(
+                    layers["SC"], connection_width=12,
+                    connection_gap=2, port_gap=10,
+                    port_length=160, port_width=160, taper_length=80
+                ).move(*port_connect))
+
+            # if i in [2]:
+            #     extra_parts = KleLayoutElement()
+
+            #     extra_conn = KleCutOut(create_shape(layers["SC"], [(0, 0), (400, 0), (400, 454), (0, 454)]))
+            #     extra_parts.add_element(extra_conn.move(-290, 1073))
+            #     start_point = dc_endpoints[i].get_absolute_points()[0]
+            #     extra_path = [start_point, (start_point[0], start_point[1] + 320), (start_point[0] - 214.911 + 30, start_point[1] + 320), (start_point[0] - 214.911 + 0.152, start_point[1] + 320)]
+            #     extra_trace, _ = get_routed_trace(layers["SC"], extra_path, width_start=2.5, width_end=2.5, radii=10)
+            #     extra_conn.add_element(extra_trace)
+
+            #     endpoint = (start_point[0] - 214.911 + 0.152, start_point[1] + 320)
+            #     for n in range(3):
+            #         bt_elem, bt_ref = get_one_stage_of_bowtie()
+            #         bt_elem.flip_horizontally()
+            #         bt_points = bt_ref.get_absolute_points()[0]
+            #         dc_trace_points = endpoint
+            #         bt_elem.move(dc_trace_points[0] - bt_points[0] - 465 - n * (465 + 99), dc_trace_points[1] - bt_points[1])
+                    
+            #         extra_parts.add_element(bt_elem)
+                
+            #     resonators.add_element(extra_parts)
+            #     port_connect = (dc_trace_points[0] - bt_points[0] - (n+1) * (465 + 99), dc_trace_points[1] - bt_points[1]-112)
+                
+            #     extra_parts.add_element(get_cpw_port(
+            #         layers["SC"], connection_width=12,
+            #         connection_gap=2, port_gap=10,
+            #         port_length=160, port_width=160, taper_length=80
+            #     ).move(*port_connect))
+
+        # add for 0
+        # resonators.add_element(extra_parts.get_copy().flip_vertically().move(0, 1073))
+            
+
+        resonators.move(290, 0)
+        # print(dc_endpoints)
+
+        return cutout
+
 
 
 # cap_elem, _ = get_interdigit_cap(layers["SC"], 6, 2, 120, 27)
@@ -320,19 +421,147 @@ def get_cascaded_LC(f, Z0, N, distance_from_PL):
 
 #     return cutout
 
-FREQUENCIES = []
-Z0s = []
-DISTs_FROM_PL = []
-NUMBER_OF_RES = []
 
-distance_from_PL = 20
+distance_from_PL = 50
 # for i in range(2, 7):
 
 layout.add_element(
-    get_cascaded_LC(6e9, 4000, 5, distance_from_PL)#.rotate_left().move(3178, 2257)
+    get_cascaded_LC(5e9, 4000, 5, distance_from_PL).rotate_left().move(2478, 2760 - 80 + distance_from_PL)
 )
 
+layout.add_element(
+    get_cascaded_LC(6e9, 4000, 3, distance_from_PL).rotate_left().move(4618, 2760 - 80 + distance_from_PL)
+)
+
+# Add ref resonator
+NCAP = 5
+mL, cL = get_L_length(6.5e9, 4000, width=2, L_sheet=LSHEET, N=NCAP, eps=EPS)
+
+lcp = LCParams()
+lcp.interdigit_cap_L = cL
+lcp.interdigit_cap_N = 5
+lcp.interdigit_cap_G = 5
+lcp.interdigit_cap_W = 5
+
+lcp.meander_height = cL + 15
+lcp.meander_L = mL
+lcp.meander_N = 0
+lcp.cutout_width = 800
+lcp.cutout_height = 400
+
+cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
+
+resonator.move(80 + 375, -30 + 70 + (216.764 - 142.75)/2)
+layout.add_element(cutout.rotate_right().move(2500, 4440))
+
+
+
+
+# Add regular CC resonator
+FREQ = [4.5e9]
+POS = [(0, 0)]
+RES_GAP = [40, ]
+BOWTIES = [
+    [2, 2]
+]
+
+
+def get_fishbone_cap():
+    cutout_width, cutout_height = 145, 224
+    bowtie = KleCutOut(create_shape(layers["SC"], [
+        (0, 0), (0, -cutout_height), (-cutout_width, -cutout_height), (-cutout_width, 0)
+    ]))
+
+    intercap, cap = get_interdigit_cap(layers["SC"], 5, 2, 100, 21)
+    bowtie.add_element(intercap.move(-138-7, -107*2 - 5))
+    bowtie.add_element(intercap.get_copy().flip_vertically().move(0, -232 + 8))
+
+    return bowtie
+
+for f, pos, res_gap, bowties in zip(FREQ, POS, RES_GAP, BOWTIES):
+    mL, cL = get_L_length(f, 4000, width=2, L_sheet=LSHEET, N=NCAP, eps=EPS)
+    mL, cL = round(mL, 3), round(cL, 3)
+    print(mL, cL)
+
+    lcp = LCParams()
+    lcp.interdigit_cap_L = cL
+    lcp.interdigit_cap_N = NCAP
+    lcp.interdigit_cap_G = 5
+    lcp.interdigit_cap_W = 5
+
+    lcp.meander_height = cL + 15
+    lcp.meander_L = mL
+    lcp.meander_N = 0
+    lcp.cutout_width = 600
+    lcp.cutout_height = 673 - 100
+
+    cutout, resonator = get_interdigit_LC(layers["SC"], lcp)
+    resonator.rotate_right().move(165, 305 + 20)
+
+    meander_path = get_meander_path(100, 50, 7)
+    meander_path = [(0, 23 + 89 - 30.25), (0, 15 + 30 - 0.25)] + meander_path[:-3] + [
+        (meander_path[-1][0] - 100, meander_path[-1][1]),
+        (meander_path[-1][0] + 80, meander_path[-1][1])
+    ]
+    meander, meander_len = get_routed_trace(
+        layers["SC"], meander_path, width_start=2.5,
+        width_end=2.5, radii=10
+    )
+    
+    meander_right = meander.get_copy().flip_horizontally().move(245 + 167.5 + 50 + cL, 650 + 31 - 190 + 0.25)
+    cutout.add_element(meander_right)
+    meander_left = meander.move(147.5 - 60, 530 + 120 + 31 -190 + 0.25)
+    cutout.add_element(meander_left)
+    print("meander_ind", meander_len * LSHEET/2)
+    resonator.move(0, -22.5)
+    resonator.move(0, res_gap)
+    layout.add_element(cutout.move(*pos))
+
+    if bowties[0] > 0:
+        bt_elem, ref = get_one_stage_of_bowtie()
+        bt_elem.rotate_left()
+
+        meander_end = meander_left.subelements[-2].get_absolute_points()[0]
+        bowtie_end = ref.get_absolute_points()[0]
+
+        for i in range(bowties[0]):
+            cutout.add_element(bt_elem.get_copy().move(
+                meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] + i * (465 + 99) + 465
+            ))
+
+        cutout.add_element(get_cpw_port(
+            layers["SC"], connection_width=12,
+            connection_gap=2, port_gap=10,
+            port_length=160, port_width=160, taper_length=80
+        ).move(-145, -112).rotate_left().flip_vertically().move(
+            meander_end[0] - bowtie_end[0] + 257, meander_end[1] - bowtie_end[1] + (i+1) * (465 + 99) + 112
+        ))
+
+    if bowties[1] > 0:
+        bt_elem, ref = get_one_stage_of_bowtie()
+        bt_elem.rotate_left()
+
+        meander_end = meander_right.subelements[-2].get_absolute_points()[0]
+        bowtie_end = ref.get_absolute_points()[0]
+
+        for i in range(bowties[1]):
+            cutout.add_element(bt_elem.get_copy().move(
+                meander_end[0] - bowtie_end[0], meander_end[1] - bowtie_end[1] + i * (465 + 99) + 465
+            ))
+        cutout.add_element(get_cpw_port(
+            layers["SC"], connection_width=12,
+            connection_gap=2, port_gap=10,
+            port_length=160, port_width=160, taper_length=80
+        ).move(-145, -112).rotate_left().flip_vertically().move(
+            meander_end[0] - bowtie_end[0] + 257, meander_end[1] - bowtie_end[1] + (i+1) * (465 + 99) + 112
+        ))
+
+    cutout.move(3300, 3640)
+
+
+
+# === End top
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/RA00_90pH_11_7eps_20250505.gds"
+    r"/home/jyrgen/Documents/PhD/design_files/RA00_400pH_11_7eps_20250505.gds"
 )
