@@ -25,23 +25,335 @@ LSHEET = 63e-12 # 63 ph/sq
 EPS = 11.7
 
 LAYER_NAMES = [
-    "SC",
+    "SC", "SC_FINE", "REF_DOT"
 ]
-layout = KleLayout(6000, 6000, LAYER_NAMES)
+layout = KleLayout(10000, 10000, LAYER_NAMES)
 layers = layout.get_layers()
 
 # === START BORDER ===
 border_shape = create_shape(layers["SC"], [
-    [200, 200], [7800, 200], [7800, 300], [200, 300]
+    [0, 0], [9000, 0], [9000, 100], [0, 100]
 ])
-layout.add_element(border_shape)
-layout.add_element(border_shape.get_copy().move(0, 7500))
-layout.add_element(border_shape.get_copy().rotate_right().move(0, 8000))
-layout.add_element(border_shape.get_copy().rotate_right().move(7500, 8000))
-
+layout.add_element(border_shape.move(500, 500))
+layout.add_element(border_shape.get_copy().move(0, 8900))
+layout.add_element(border_shape.get_copy().rotate_right().move(0, 9000))
+layout.add_element(border_shape.get_copy().rotate_right().move(9000, 9000))
 # === END BORDER ===
+
+# === START PL ===
+print("=== PL ===")
+PL_WIDTH = 240
+PL_GAP = 50
+PL_LENGTH = 6500
+pl, pl_length = get_routed_cpw(
+    layers["SC"],
+    [(0, 0),
+    (100, 0), (500, 0),
+    (1000, 0), (1500, 0),
+    (2000, 0), (2500, 0),
+    (PL_LENGTH-100, 0), (PL_LENGTH, 0)],
+    PL_WIDTH,
+    PL_GAP,
+    radii=40
+)
+
+PORT_GAP = 4 * PL_GAP
+PORT_WIDTH = 2 * PL_WIDTH
+PORT_LEN = 300
+
+# ==== PL ====
+pl.add_element(
+    get_cpw_port(layers["SC"], PL_WIDTH, PL_GAP, port_gap=PORT_GAP, port_width=PORT_WIDTH, port_length=PORT_LEN)
+)
+pl.add_element(
+    get_cpw_port(layers["SC"], PL_WIDTH, PL_GAP, port_gap=PORT_GAP, port_width=PORT_WIDTH, port_length=PORT_LEN).flip_horizontally().move(PL_LENGTH, 0)
+)
+pl_cut, _ = get_routed_trace(layers["SC"], [
+    (0, 0), (0, PL_WIDTH/2), (0, PL_WIDTH)
+], width_start=1, width_end=1)
+pl.add_element(pl_cut.move(PL_LENGTH/2, -PL_WIDTH/2))
+
+port_imp, _ = get_cpw_impedance(PORT_WIDTH, PORT_GAP, L_sheet=LSHEET, eps=EPS)
+print("port imp", port_imp)
+
+pl_imp, pl_freq = get_cpw_impedance(PL_WIDTH, PL_GAP, L_sheet=LSHEET, eps=EPS, l=pl_length + 2*PORT_LEN)
+print("Probe line impedance:", pl_imp, "freq:", pl_freq/1e9)
+
+pl_co = KleCutOut(pl.move(460 + 500 + 220 + 620, 5000))
+
+layout.add_element(pl_co)
+
+print("=== PL END ===")
+# === END PL ===
+
+
+# === FILTER DEF ===
+def get_interdigit_cap(layer, W, G, L, N):
+    # Interdigit Cap
+    extra_end = 15
+    interdigit_cap = KleLayoutElement()
+    for n in range(N):
+        if n == 0:
+            _extra0 = -extra_end
+            _extra1 = 0
+        elif n == N-1:
+            _extra0 = 0
+            _extra1 = extra_end
+        else:
+            _extra0 = 0
+            _extra1 = 0
+        interdigit_cap.add_element(
+            create_shape(layer, [
+                [_extra0, 0],
+                [W + _extra1, 0],
+                [W + _extra1, L],
+                [_extra0, L]
+            ]).move(n * (W + G), (n%2)*G)
+        )
+    end_conn = create_shape(layer, [
+        [-extra_end, 0],
+        [-extra_end, -W],
+        [extra_end + (W + G) * N - G, -W],
+        [extra_end + (W + G) * N - G, 0]
+    ])
+    interdigit_cap.add_element(end_conn)
+    interdigit_cap.add_element(end_conn.get_copy().move(0, L + G + W))
+
+    cap = (EPS + 1) * ((N-3) * (W/G) * 4.409e-6 + 9.92e-6) * L * 1e-12
+
+    return interdigit_cap, cap
+
+def get_interdigit_cap(layer, W, G, L, N):
+    # Interdigit Cap
+    extra_end = 15
+    interdigit_cap = KleLayoutElement()
+    for n in range(N):
+        if n == 0:
+            _extra0 = -extra_end
+            _extra1 = 0
+        elif n == N-1:
+            _extra0 = 0
+            _extra1 = extra_end
+        else:
+            _extra0 = 0
+            _extra1 = 0
+        interdigit_cap.add_element(
+            create_shape(layer, [
+                [_extra0, 0],
+                [W + _extra1, 0],
+                [W + _extra1, L],
+                [_extra0, L]
+            ]).move(n * (W + G), (n%2)*G)
+        )
+    end_conn = create_shape(layer, [
+        [-extra_end, 0],
+        [-extra_end, -W],
+        [extra_end + (W + G) * N - G, -W],
+        [extra_end + (W + G) * N - G, 0]
+    ])
+    interdigit_cap.add_element(end_conn)
+    interdigit_cap.add_element(end_conn.get_copy().move(0, L + G + W))
+
+    cap = (EPS + 1) * ((N-3) * (W/G) * 4.409e-6 + 9.92e-6) * L * 1e-12
+
+    return interdigit_cap, cap
+
+def get_meander_path(height, step, N):
+    path = [
+        (0, 0)
+    ]
+    for i in range(N):
+        if i%2 == 0:
+            path.extend([
+                (height, -step * i),
+                (height, -step * (i + 1))
+            ])
+        else:
+            path.extend([
+                (0, -step * i),
+                (0, -step * (i + 1))
+            ])
+
+    path = path[:-1] + [(height * ((i+1)%2), -step * (i + 0.5)), path[-1]]
+
+    return path
+
+
+def get_one_stage_of_bowtie(skip_mean=False, existing_ind=0):
+    cutout_width, cutout_height = 465, 226 + 20 - 2
+    bowtie = KleCutOut(create_shape(layers["SC"], [
+        (100-1-18, 20), (100-1-18, -cutout_height), (-cutout_width, -cutout_height), (-cutout_width, 20)
+    ]))
+
+    intercap, cap = get_interdigit_cap(layers["SC"], 4, 4, 120, 25)
+    bowtie.add_element(intercap.move(-138-7 + 15, -107*2 - 4 - 20 - 2))
+    bowtie.add_element(intercap.get_copy().flip_vertically().move(0, -224))
+
+    if skip_mean is False:
+        N_step = 28
+        gap_step = 20
+        gap_heigth = 80
+
+        ind_f_path = [(0, 0), (-gap_step, 0)]
+
+        def temp(blah):
+            if blah == 0:
+                return -gap_heigth
+            if blah == 1:
+                return -gap_heigth
+            if blah == 2:
+                return gap_heigth
+            else:
+                return gap_heigth
+
+        for i in range(N_step):
+            ind_f_path.append(
+                (-gap_step * (1 + (i+1)//2), temp(i%4)),
+            )
+
+        ind_f_path.append((-gap_step * (1 + (i+2)//2), 0))
+        ind_f_path.append((-310, 0))
+        ind_f_path.append((-320, 0))
+    
+    else:
+        ind_f_path = [(0, 0), (-10, 0), (-320, 0)]
+
+    inductor, len = get_routed_trace(layers["SC"], ind_f_path, width_start=2.5, width_end=2.5, radii=8)
+    tot_inductance = len * LSHEET/2.5 + existing_ind
+    bowtie.add_element(inductor.move(-138-7, -5 - 107))
+    connection_ref = create_ref(0, -112)
+
+    bowtie.add_element(connection_ref)
+    print("bowtiecap", cap*2e12, "pF, bowtie Ind", tot_inductance*1e9, "nH")
+    def cutoff(L, C):
+        return 1/(2*3.14 * (L * C)**0.5)
+    print("cutoff (GHz)", cutoff(cap*2, tot_inductance)/1e9)
+
+    return bowtie, connection_ref
+# === FILTER DEF ===
+
+
+
+
+def get_one_sample_cell(res_len):
+    # === START RES ===
+    PL_CUTOUT_WIDTH = 1000
+    EXTRA = 1
+    # pl_co is the probe line cutout where to attach everything else
+    res_reference = KleLayoutElement() # Keep everything packaged without building
+    remove_from_pl = create_shape(layers["SC"], [
+        (0, 0), (PL_CUTOUT_WIDTH, 0), (PL_CUTOUT_WIDTH, PL_GAP), (0, PL_GAP)
+    ])
+    res_reference.add_element(remove_from_pl)
+
+    RES_LEN = res_len
+    X0 = PL_CUTOUT_WIDTH/2
+    Y0 = PL_GAP/2
+
+    EXTRA_HW = 20
+    EXTRA_LEN = 200
+    FANOUT_HW = 1000
+    FANOUT_LEN = 100
+
+    fine_res = KleCutOut(
+        create_shape(layers["SC_FINE"], [
+            (-EXTRA, 0),
+            (-EXTRA_HW + X0, 0), (-EXTRA_HW + X0, -EXTRA_LEN), # EXTRA FOR ROUTING
+            (-EXTRA_HW + X0 - FANOUT_HW, -EXTRA_LEN), (-EXTRA_HW + X0 - FANOUT_HW, -EXTRA_LEN-FANOUT_LEN), (-EXTRA_HW + X0 + FANOUT_HW, -EXTRA_LEN-FANOUT_LEN), (-EXTRA_HW + X0 + FANOUT_HW, -EXTRA_LEN), # EXTRA FOR FANOUT
+            (EXTRA_HW + X0, -EXTRA_LEN), (EXTRA_HW + X0, 0), # EXTRA FOR ROUTING
+            (PL_CUTOUT_WIDTH + EXTRA, 0), (PL_CUTOUT_WIDTH + EXTRA, PL_GAP), (-EXTRA, PL_GAP)
+        ])
+    )
+    res_reference.add_element(fine_res)
+    trace, _len = get_routed_trace(layers["SC_FINE"], [
+        (-RES_LEN/2 + X0, 0), (-RES_LEN/2 + X0, Y0), (RES_LEN/2 + X0, Y0), (RES_LEN/2 + X0, Y0*2)
+    ], radii=2, width_start=0.5, width_end=0.5)
+    fine_res.add_element(trace)
+    _Z, _f = get_cpw_impedance(0.5, 24.5, LSHEET, EPS, _len)
+    print(f"RES Z: {_Z}, freq: {_f/1e9}")
+
+    # Add ref dot to guide
+    ref_dot = KleLayoutElement()
+    ref_dot.add_element(create_shape(layers["REF_DOT"], [
+        (-2.5, 0), (2.5, 0), (2.5, 0.2), (-2.5, 0.2)
+    ]))
+    ref_dot.add_element(create_shape(layers["REF_DOT"], [
+        (-0.1, -1), (0.1, -1), (0.1, 1), (-0.1, 1)
+    ]))
+    ref_dot.move(X0, Y0 - 5)
+    res_reference.add_element(ref_dot)
+    # Finish ref dot
+
+
+    # === DC LINES ===
+    # Add middle cap 
+    CAP_WIDTH = 1
+    CAP_LENGTH = 3
+    fine_res.add_element(create_shape(layers["SC_FINE"], [
+        (-CAP_WIDTH, 0), (CAP_WIDTH, 0), (CAP_WIDTH, -CAP_LENGTH), (-CAP_WIDTH, -CAP_LENGTH)
+    ]).move(X0, Y0-0.25))
+
+
+    # Add Gate/Lead trace
+    line_ends = []
+    existing_ind = []
+    N4_and_path = {
+        0: [(-20, -FANOUT_LEN/3-CAP_WIDTH-14-EXTRA_LEN), (-700, -FANOUT_LEN/3-CAP_WIDTH-14-EXTRA_LEN), (-700, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN)],
+        1: [(-10, -(2*FANOUT_LEN)/3-CAP_WIDTH-14-EXTRA_LEN), (-250, -(2*FANOUT_LEN)/3-CAP_WIDTH-14-EXTRA_LEN), (-250, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN)],
+        2: [(10, -(2*FANOUT_LEN)/3-CAP_WIDTH-14-EXTRA_LEN), (250, -(2*FANOUT_LEN)/3-CAP_WIDTH-14-EXTRA_LEN), (250, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN)],
+        3: [(20, -FANOUT_LEN/3-CAP_WIDTH-14-EXTRA_LEN), (700, -FANOUT_LEN/3-CAP_WIDTH-14-EXTRA_LEN), (700, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN)],
+    }
+    NR_OF_LINES = 4
+    for n in range(NR_OF_LINES):
+        trace = KleLayoutElement()
+        trace.add_element(create_shape(layers["SC_FINE"], [
+            (-CAP_WIDTH, -CAP_WIDTH), (CAP_WIDTH, -CAP_WIDTH), (CAP_WIDTH, CAP_WIDTH), (-CAP_WIDTH, CAP_WIDTH)
+        ]))
+        fout_trace = [
+            (0, -CAP_WIDTH), (0, -CAP_WIDTH-5), (0, -CAP_WIDTH-14-EXTRA_LEN)
+        ]
+        fout_trace.extend(N4_and_path[n])
+        conn, fanout_len = get_routed_trace(layers["SC_FINE"], fout_trace, width_end=0.5, width_start=0.5, radii=2)
+        print("fanout ind",fanout_len * LSHEET/0.5)
+        existing_ind.append(fanout_len * LSHEET/0.5)
+        trace.add_element(conn)
+        endpoint = create_ref(*fout_trace[-1])
+        trace.add_element(endpoint)
+        res_reference.add_element(trace.move(n * 5 + X0 - 5 * (NR_OF_LINES-1)/2, Y0 - 10))
+        fine_res.add_element(trace)
+        
+        line_ends.append(endpoint)
+
+    # === END RES ===
+
+
+    for i, ep in enumerate(line_ends):
+        bt, r = get_one_stage_of_bowtie(True if i in [0, 3] else False, existing_ind=existing_ind[i])
+        x, y = ep.get_absolute_points()[0]
+        layout.add_element(bt.rotate_right().move(x+112, y-465))
+        res_reference.add_element(bt)
+        
+        port = get_cpw_port(
+            layers["SC"], connection_width=8,
+            connection_gap=4, port_gap=10,
+            port_length=160, port_width=160, taper_length=80
+        ).rotate_left().move(x, y-465-81)
+        layout.add_element(port)
+        res_reference.add_element(port)
+
+    return res_reference, remove_from_pl, fine_res, ref_dot
+
+
+res_0, rpl_0, fr_0, rf_dot_0 = get_one_sample_cell(8000)
+# === ADD ===
+res_0.move(3000, 4830)
+pl_co.add_element(rpl_0)
+layout.add_element(fr_0)
+layout.add_element(rf_dot_0)
+
 
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/B00_63pH_11_7eps_20250613.gds"
+    # r"/home/jyrgen/Documents/PhD/design_files/B00_63pH_11_7eps_20250613.gds"
+    r"C:\Users\jyrgen\Documents\PhD\design\gds_files\B00_63pH_11_7eps_20250613.gds"
 )

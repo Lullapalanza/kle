@@ -289,11 +289,16 @@ class KleCutOut(KleLayoutElement):
         if target is not None:
             print("WARNING, TARGET FOR CUTOUT")
 
-        target, layer = self.subelements[0].build_to_cell()[0]
+        target_and_layers = self.subelements[0].build_to_cell()
 
-        polygons_to_add = [(target, layer)]
+        target = pya.EdgeProcessor().simple_merge_p2p([target for target, layer in target_and_layers], True, True)
+        # print(type(target[0]))
+        # print(type(target_and_layers[0][0]))
+        
+        # Assume the merge has only one valid target to use
+        polygons_to_add = [(target[0], target_and_layers[0][1])]
         for subelement in self.subelements[1:]:
-            elems = subelement.build_to_cell(target)
+            elems = subelement.build_to_cell(target[0])
             polygons_to_add.extend(elems)
         return polygons_to_add
 
