@@ -227,10 +227,11 @@ def get_tpiece(layer, connection_width=8, connection_gap=4, height=200, straight
 
 
 
-def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, random_extra_off=0, Nconn=4):
+def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, Nconn=4):
     # === START RES ===
     PL_CUTOUT_WIDTH = 1000
     EXTRA = 1
+
     # pl_co is the probe line cutout where to attach everything else
     res_reference = KleLayoutElement() # Keep everything packaged without building
     remove_from_pl = create_shape(layers["SC"], [
@@ -242,17 +243,19 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, random_extra_off=0
     X0 = PL_CUTOUT_WIDTH/2
     Y0 = PL_GAP/2
 
-    EXTRA_HW = 20
-    EXTRA_LEN = 60
-    FANOUT_HW = 1000-140.5
-    FANOUT_LEN = 100 # 100
+    SPACE_FOR_DOT_HW = PL_GAP/2
+    SPACE_FOR_DOT_LENGTH = 50
+
+    # EXTRA_HW = 20
+    # EXTRA_LEN = 60
+    # FANOUT_HW = 1000-140.5
+    # FANOUT_LEN = 100 # 100
 
     fine_res = KleCutOut(
         create_shape(layers["SC_FINE"], [
             (-EXTRA, 0),
-            (-EXTRA_HW + X0, 0), (-EXTRA_HW + X0, -EXTRA_LEN), # EXTRA FOR ROUTING
-            (EXTRA_HW + X0 - FANOUT_HW, -EXTRA_LEN), (EXTRA_HW + X0 - FANOUT_HW, -EXTRA_LEN-FANOUT_LEN), (-EXTRA_HW + X0 + FANOUT_HW, -EXTRA_LEN-FANOUT_LEN), (-EXTRA_HW + X0 + FANOUT_HW, -EXTRA_LEN), # EXTRA FOR FANOUT
-            (EXTRA_HW + X0, -EXTRA_LEN), (EXTRA_HW + X0, 0), # EXTRA FOR ROUTING
+            (-SPACE_FOR_DOT_HW + X0, 0), (-SPACE_FOR_DOT_HW + X0, -SPACE_FOR_DOT_LENGTH), # EXTRA FOR ROUTING
+            (SPACE_FOR_DOT_HW + X0, -SPACE_FOR_DOT_LENGTH), (SPACE_FOR_DOT_HW + X0, 0), # EXTRA FOR ROUTING
             (PL_CUTOUT_WIDTH + EXTRA, 0), (PL_CUTOUT_WIDTH + EXTRA, PL_GAP), (-EXTRA, PL_GAP)
         ])
     )
@@ -262,139 +265,118 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, random_extra_off=0
         (-RES_LEN/2 + X0, 0), (-RES_LEN/2 + X0, Y0), (RES_LEN/2 + X0, Y0), (RES_LEN/2 + X0, Y0*2)
     ], radii=2, width_start=0.5, width_end=0.5)
     
-    res_reference.add_element(fine_res)
     fine_res.add_element(trace)
     
     _Z, _f = get_cpw_impedance(0.5, 24.5, LSHEET, EPS, _len)
-    # _Z, _f = get_cpw_impedance(0.5, 24.5, LSHEET, EPS, 634, lambda_frac=0.5)
     print(f"RES Z: {_Z}, freq: {_f/1e9}, len: {_len}")
 
-    # Add ref dot to guide
-    ref_dot = KleLayoutElement()
-    ref_dot.add_element(create_shape(layers["REF_DOT"], [
-        (-2.5, 0), (2.5, 0), (2.5, 0.2), (-2.5, 0.2)
-    ]))
-    ref_dot.add_element(create_shape(layers["REF_DOT"], [
-        (-0.1, -1), (0.1, -1), (0.1, 1), (-0.1, 1)
-    ]))
-    ref_dot.move(X0, Y0 - 5)
-    res_reference.add_element(ref_dot)
-    # Finish ref dot
-
-
-    # === DC LINES ===
-    # Add middle cap 
-    CAP_WIDTH = mid_cap_hwidth
-    CAP_LENGTH = mid_cap_len
-
+    # === DOT RESONATOR CONN ===
     fine_res.add_element(create_shape(layers["SC_FINE"], [
-        (-CAP_WIDTH, 0), (CAP_WIDTH, 0), (CAP_WIDTH, -CAP_LENGTH), (-CAP_WIDTH, -CAP_LENGTH)
+        (-mid_cap_hwidth, 0), (mid_cap_hwidth, 0), (mid_cap_hwidth, -SPACE_FOR_DOT_LENGTH), (-mid_cap_hwidth, -SPACE_FOR_DOT_LENGTH)
     ]).move(X0, Y0-0.25))
 
+    res_reference.add_element(fine_res)
 
-    # Add Gate/Lead trace
+    # === GATES AND LEADS ===
     line_ends = []
     existing_ind = []
-    N4_and_path = {
-        0: [(-20, -FANOUT_LEN/3-CAP_WIDTH-EXTRA_LEN), (-700, -FANOUT_LEN/3-CAP_WIDTH-EXTRA_LEN), (-700, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN+14.5-random_extra_off)],
-        1: [(-10, -(2*FANOUT_LEN)/3-CAP_WIDTH-EXTRA_LEN), (-250, -(2*FANOUT_LEN)/3-CAP_WIDTH-EXTRA_LEN), (-250, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN+20), (-250, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN+14.5-random_extra_off)],
-        2: [(10, -(2*FANOUT_LEN)/3-CAP_WIDTH-EXTRA_LEN), (250, -(2*FANOUT_LEN)/3-CAP_WIDTH-EXTRA_LEN), (250, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN+20), (250, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN+14.5-random_extra_off)],
-        3: [(20, -FANOUT_LEN/3-CAP_WIDTH-EXTRA_LEN), (700, -FANOUT_LEN/3-CAP_WIDTH-EXTRA_LEN), (700, -FANOUT_LEN-CAP_WIDTH-14-EXTRA_LEN+14.5-random_extra_off)],
+    N_and_path = {
+        0: [(0, -0.25), (-2.5, -0.25), (-10, -0.25)],
+        1: [(0, 0), (0, -2.5), (0, -4.5)],
+        2: [(0, 0), (0, -2.5), (0, -4.5)],
+        3: [(0, -0.25), (2.5, -0.25), (5, -0.25)]
     }
 
     for n in range(Nconn):
-        trace = KleLayoutElement()
-        trace.add_element(create_shape(layers["SC_FINE"], [
-            (-CAP_WIDTH, -CAP_WIDTH), (CAP_WIDTH, -CAP_WIDTH), (CAP_WIDTH, CAP_WIDTH), (-CAP_WIDTH, CAP_WIDTH) # PAD
-        ]).move(0, -mid_cap_len+3))
-        fout_trace = [
-            (0, -CAP_WIDTH-mid_cap_len+3), (0, -CAP_WIDTH-14-EXTRA_LEN) # Connection to pad
-        ]
-        fout_trace.extend(N4_and_path[n])
-        conn, fanout_len = get_routed_trace(layers["SC_FINE"], fout_trace, width_end=0.5, width_start=0.5, radii=5)
-        print("fanout ind", fanout_len * LSHEET/0.5)
-        existing_ind.append(fanout_len * LSHEET/0.5)
-        trace.add_element(conn)
-        endpoint = create_ref(*fout_trace[-1])
-        trace.add_element(endpoint)
+        fout_trace, _ = get_routed_trace(layers["SC_FINE"], N_and_path[n], width_end=0.5, width_start=0.5)
+        fine_res.add_element(fout_trace.move(X0 -15 + n * 10, Y0 - 0.25 - SPACE_FOR_DOT_LENGTH - 20))
+        # res_reference.add_element(fout_trace)
+    #     fout_trace = [
+    #         (0, -CAP_WIDTH-mid_cap_len+3), (0, -CAP_WIDTH-14-EXTRA_LEN) # Connection to pad
+    #     ]
+    #     fout_trace.extend(N4_and_path[n])
+    #     conn, fanout_len = get_routed_trace(layers["SC_FINE"], fout_trace, width_end=0.5, width_start=0.5, radii=5)
+    #     print("fanout ind", fanout_len * LSHEET/0.5)
+    #     existing_ind.append(fanout_len * LSHEET/0.5)
+    #     trace.add_element(conn)
+    #     endpoint = create_ref(*fout_trace[-1])
+    #     trace.add_element(endpoint)
 
-        fine_res.add_element(trace.move(n * 5 + X0 - 5 * (Nconn-1)/2, Y0 - 10 - 15))
+    #     fine_res.add_element(trace.move(n * 5 + X0 - 5 * (Nconn-1)/2, Y0 - 10 - 15))
         
-        line_ends.append(endpoint)
+    #     line_ends.append(endpoint)
 
-    # === END RES ===
+    # # === END RES ===
 
 
-    for i, ep in enumerate(line_ends):
-        bt, r = get_one_stage_of_bowtie(True if i in [0, 3] else False, existing_ind=existing_ind[i])
-        x, y = ep.get_absolute_points()[0]
-        layout.add_element(bt.rotate_right().move(x+112, y-465 + 1)) # 1 um of overlap
-        res_reference.add_element(bt)
+    # for i, ep in enumerate(line_ends):
+    #     bt, r = get_one_stage_of_bowtie(True if i in [0, 3] else False, existing_ind=existing_ind[i])
+    #     x, y = ep.get_absolute_points()[0]
+    #     layout.add_element(bt.rotate_right().move(x+112, y-465 + 1)) # 1 um of overlap
+    #     res_reference.add_element(bt)
         
-        _tside="left"
+    #     _tside="left"
 
-        t_piece = get_tpiece(
-            layers["SC"], connection_width=8, connection_gap=4, height=200, tside=_tside
-        )
-        layout.add_element(t_piece.move(x, y-465-80))
-        res_reference.add_element(t_piece)
+    #     t_piece = get_tpiece(
+    #         layers["SC"], connection_width=8, connection_gap=4, height=200, tside=_tside
+    #     )
+    #     layout.add_element(t_piece.move(x, y-465-80))
+    #     res_reference.add_element(t_piece)
 
-        port = get_cpw_port(
-            layers["SC"], connection_width=8,
-            connection_gap=4, port_gap=10,
-            port_length=160, port_width=160, taper_length=80
-        )
+    #     port = get_cpw_port(
+    #         layers["SC"], connection_width=8,
+    #         connection_gap=4, port_gap=10,
+    #         port_length=160, port_width=160, taper_length=80
+    #     )
 
-        port0 = port.get_copy().rotate_left().move(x, y-465-80-200-400)
-        layout.add_element(port0)
-        res_reference.add_element(port0)
+    #     port0 = port.get_copy().rotate_left().move(x, y-465-80-200-400)
+    #     layout.add_element(port0)
+    #     res_reference.add_element(port0)
         
-        if _tside=="left":
-            port_co = KleCutOut(create_shape(layers["SC"], [
-                (-20, -25), (115, -25), (115, 70), (-20, 70)
-            ]))
-            port_cap, cval = get_interdigit_cap(layers["SC"], 5, 5, 40, 10, extra_end=False)
-            port_co.add_element(port_cap)
-            port_co.add_element(create_shape(
-                layers["SC"], [
-                    (0, 0), (8, 0), (8, 20), (0, 20)
-                ]
-            ).move(45-1.5, 50))
-            port_co.add_element(create_shape(
-                layers["SC"], [
-                    (0, 0), (8, 0), (8, 20), (0, 20)
-                ]
-            ).move(45-1.5, -25))
+    #     if _tside=="left":
+    #         port_co = KleCutOut(create_shape(layers["SC"], [
+    #             (-20, -25), (115, -25), (115, 70), (-20, 70)
+    #         ]))
+    #         port_cap, cval = get_interdigit_cap(layers["SC"], 5, 5, 40, 10, extra_end=False)
+    #         port_co.add_element(port_cap)
+    #         port_co.add_element(create_shape(
+    #             layers["SC"], [
+    #                 (0, 0), (8, 0), (8, 20), (0, 20)
+    #             ]
+    #         ).move(45-1.5, 50))
+    #         port_co.add_element(create_shape(
+    #             layers["SC"], [
+    #                 (0, 0), (8, 0), (8, 20), (0, 20)
+    #             ]
+    #         ).move(45-1.5, -25))
 
-            port1 = port.get_copy().rotate_left().move(x - 200, y-465-80-200-95)
-            port1.add_element(port_co.move(x-200-47.55, y-465-280-70))
+    #         port1 = port.get_copy().rotate_left().move(x - 200, y-465-80-200-95)
+    #         port1.add_element(port_co.move(x-200-47.55, y-465-280-70))
             
-            layout.add_element(port1)
-            res_reference.add_element(port1)
-            _tside="left"
-        elif _tside=="right":
-            port1 = port.get_copy()
-            layout.add_element(port1.flip_horizontally().move(x+200, y-465-180))
-            res_reference.add_element(port1)
+    #         layout.add_element(port1)
+    #         res_reference.add_element(port1)
+    #         _tside="left"
+    #     elif _tside=="right":
+    #         port1 = port.get_copy()
+    #         layout.add_element(port1.flip_horizontally().move(x+200, y-465-180))
+    #         res_reference.add_element(port1)
     
-    return res_reference, remove_from_pl, fine_res, ref_dot
+    return res_reference, remove_from_pl, fine_res #, ref_dot
 
 
-res_0, rpl_0, fr_0, rf_dot_0 = get_one_sample_cell(800, 0.5, 50, random_extra_off=-5)
+res_0, rpl_0, fr_0 = get_one_sample_cell(800, 0.5, 50, Nconn=4)
 # === ADD ===
 res_0.move(3000, 4830)
 pl_co.add_element(rpl_0)
 layout.add_element(fr_0)
-layout.add_element(rf_dot_0)
 
 
 
-res_2, rpl_2, fr_2, rf_dot_2 = get_one_sample_cell(900, 0.25, 50, random_extra_off=0.25, Nconn=3)
+res_2, rpl_2, fr_2 = get_one_sample_cell(900, 0.5, 50, Nconn=3)
 # === ADD ===
 res_2.move(6000, 4830).flip_vertically().move(0, 340)
 pl_co.add_element(rpl_2)
 layout.add_element(fr_2)
-layout.add_element(rf_dot_2)
 
 
 # === TEMP ==== FOR DOSE TEST
