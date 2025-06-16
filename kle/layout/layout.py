@@ -88,6 +88,7 @@ class KleLayerPoints:
         return self
 
     def rotate_by_angle(self, angle):
+        # print(self.origin.x, self.origin.y)
         angle = angle * math.pi / 180 
         self.points = [(
             math.cos(angle) * x + math.sin(angle) * y,
@@ -166,14 +167,21 @@ class KleShape(KleLayerPoints):
             if negative add hole
         """
         if target is not None:
-            target.insert_hole(
-                [
-                    pya.Point(
-                        round((x+self.origin.x) / LAYOUT_DBU),
-                        round((y+self.origin.y) / LAYOUT_DBU)
-                    ) for x, y in self.points
-                ]
-            )
+            points = [
+                pya.Point(
+                    round((x+self.origin.x) / LAYOUT_DBU),
+                    round((y+self.origin.y) / LAYOUT_DBU)
+                ) for x, y in self.points
+            ]
+            if all([target.inside(p) for p in points]):
+                target.insert_hole(
+                    [
+                        pya.Point(
+                            round((x+self.origin.x) / LAYOUT_DBU),
+                            round((y+self.origin.y) / LAYOUT_DBU)
+                        ) for x, y in self.points
+                    ]
+                )
             return []
 
         else:
@@ -291,15 +299,15 @@ class KleCutOut(KleLayoutElement):
 
         target_and_layers = self.subelements[0].build_to_cell()
 
-        target = pya.EdgeProcessor().simple_merge_p2p([target for target, layer in target_and_layers], True, True)
+        targets = pya.EdgeProcessor().simple_merge_p2p([target for target, layer in target_and_layers], True, True)
         # print(type(target[0]))
         # print(type(target_and_layers[0][0]))
         
-        # Assume the merge has only one valid target to use
-        polygons_to_add = [(target[0], target_and_layers[0][1])]
+        polygons_to_add = [(_t, target_and_layers[0][1]) for _t in targets]
         for subelement in self.subelements[1:]:
-            elems = subelement.build_to_cell(target[0])
-            polygons_to_add.extend(elems)
+            for pol_target in polygons_to_add:
+                elems = subelement.build_to_cell(pol_target[0])
+                polygons_to_add.extend(elems)
         return polygons_to_add
 
     def get_copy(self):
