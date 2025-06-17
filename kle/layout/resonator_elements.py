@@ -186,6 +186,23 @@ def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100, lambda_frac=0.5):
 
     return imp, freq * lambda_frac
 
+def get_cpw_LC(center_width, gap, L_sheet, eps, l=100):
+    k = center_width / (center_width + 2 * gap)
+    kbrim = (1-k**2)**0.5
+    mu_0 = np.pi * 4e-7
+
+    K = sp.ellipk(k)
+    Kbrim = sp.ellipk(kbrim)
+
+    cap_per_len = 2 * eps_0 * (1+eps) * K/Kbrim
+    ind_per_len = 0.25 * mu_0 * Kbrim/K
+
+    center_width = center_width * 1e-6
+
+    ll = ind_per_len + L_sheet/center_width
+    cl = cap_per_len
+
+    return ll * l * 1e-6, cl *l * 1e-6
 
 
 def get_coplanar_C(w, gap, eps=11.7):
