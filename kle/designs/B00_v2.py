@@ -18,6 +18,7 @@ from kle.layout.dot_elements import (
 from kle.layout.resonator_elements import get_resonator_LC, get_coplanar_C, get_cpw_port, get_interdigit_LC, get_L_length, LCParams, get_cpw_impedance
 from kle.layout.layout_trace_routing import get_routed_cpw, get_routed_trace
 from kle.layout.layout_connections import ConnectedElement
+from kle.layout.resonator_elements import get_cpw_LC
 
 
 
@@ -25,7 +26,7 @@ LSHEET = 63e-12 # 63 ph/sq
 EPS = 11.7
 
 LAYER_NAMES = [
-    "SC", "SC_FINE", "REF_DOT"
+    "SC", "SC_FINE", "MARKER_0", "MARKER_1"
 ]
 layout = KleLayout(10000, 10000, LAYER_NAMES)
 layers = layout.get_layers()
@@ -39,6 +40,75 @@ layout.add_element(border_shape.get_copy().move(0, 8900))
 layout.add_element(border_shape.get_copy().rotate_right().move(0, 9000))
 layout.add_element(border_shape.get_copy().rotate_right().move(9000, 9000))
 # === END BORDER ===
+
+# === DEF MARKER ===
+def get_optical_marker():
+    op_marker = KleLayoutElement()
+    small_arm = create_shape(layers["MARKER_0"], [
+        (-10, -1), (-10, 1), (10, 1), (10, -1)
+    ])
+    op_marker.add_element(small_arm.get_copy())
+    op_marker.add_element(small_arm.get_copy().rotate_right())
+    
+    big_arm = create_shape(layers["MARKER_0"], [
+        (10, -5), (10, 5), (100, 5), (100, -5)
+    ])
+    op_marker.add_element(big_arm.get_copy())
+    op_marker.add_element(big_arm.get_copy().rotate_by_angle(90))
+    op_marker.add_element(big_arm.get_copy().rotate_by_angle(180))
+    op_marker.add_element(big_arm.get_copy().rotate_by_angle(270))
+    return op_marker
+
+def get_global_EBL():
+    marker = KleLayoutElement()
+    small_arm = create_shape(layers["MARKER_1"], [
+        (-6, -0.25), (-6, 0.25), (6, 0.25), (6, -0.25)
+    ])
+    marker.add_element(small_arm.get_copy())
+    marker.add_element(small_arm.get_copy().rotate_right())
+
+    big_arm = create_shape(layers["MARKER_1"], [
+        (6, -2.5), (6, 2.5), (90, 2.5), (90, -2.5)
+    ])
+    marker.add_element(big_arm.get_copy())
+    marker.add_element(big_arm.get_copy().rotate_by_angle(90))
+    marker.add_element(big_arm.get_copy().rotate_by_angle(180))
+    marker.add_element(big_arm.get_copy().rotate_by_angle(270))
+
+    return marker
+
+def get_local_EBL():
+    marker = KleLayoutElement()
+    arm = create_shape(layers["MARKER_1"], [
+        (-10, -0.5), (-10, 0.5), (10, 0.5), (10, -0.5)
+    ])
+    marker.add_element(arm.get_copy())
+    marker.add_element(arm.get_copy().rotate_right())
+    return marker
+
+def get_local_square():
+    markers = KleLayoutElement()
+
+    markers.add_element(get_local_EBL().move(-75, 20))
+    markers.add_element(get_local_EBL().move(-75, -25))
+    markers.add_element(get_local_EBL().move(75, 20))
+    markers.add_element(get_local_EBL().move(75, -25))
+
+    return markers
+
+# === END MARKER ===
+
+layout.add_element(get_optical_marker().move(1000, 1000))
+layout.add_element(get_optical_marker().move(1000, 9000))
+layout.add_element(get_optical_marker().move(9000, 1000))
+layout.add_element(get_optical_marker().move(9000, 9000))
+
+layout.add_element(get_global_EBL().move(1000 + 300, 1000))
+layout.add_element(get_global_EBL().move(1000 + 300, 9000))
+layout.add_element(get_global_EBL().move(9000 - 300, 1000))
+layout.add_element(get_global_EBL().move(9000 - 300, 9000))
+
+# layout.add_element(get_local_square().move(3580, 4794.))
 
 # === START PL ===
 print("=== PL ===")
@@ -146,13 +216,58 @@ def get_meander_path(height, step, N):
     return path
 
 
+def get_cutout_meander():
+    cutout_width, cutout_height = 320-81, 226 + 20 - 2
+    # bowtie = KleLayoutElement()
+    bowtie = KleCutOut(create_shape(layers["SC_FINE"], [
+        (100-1-18, 20), (100-1-18, -cutout_height), (-cutout_width, -cutout_height), (-cutout_width, 20)
+    ]).move(-465+320-81, 0))
+    # bowtie.add_element(_bowtie)
+    N_step = 28
+    gap_step = 20
+    gap_heigth = 80
+
+    ind_f_path = [(0, 0), (-gap_step, 0)]
+
+    def temp(blah):
+        if blah == 0:
+            return -gap_heigth
+        if blah == 1:
+            return -gap_heigth
+        if blah == 2:
+            return gap_heigth
+        else:
+            return gap_heigth
+    
+    for i in range(N_step):
+        ind_f_path.append(
+            (-gap_step * (1 + (i+1)//2), temp(i%4)),
+        )
+
+    ind_f_path.append((-gap_step * (1 + (i+2)//2), 0))
+    ind_f_path.append((-310, 0))
+    ind_f_path.append((-320, 0))
+
+    inductor, len = get_routed_trace(layers["SC_FINE"], ind_f_path, width_start=1.2, width_end=1.2, radii=8)
+    tot_inductance = len * LSHEET/1.2 + 0
+    bowtie.add_element(inductor.move(-138-7, -5 - 107))
+    connection_ref = create_ref(0, -112)
+
+    bowtie.add_element(connection_ref)
+    # print("bowtiecap", cap*2e12, "pF, bowtie Ind", tot_inductance*1e9, "nH")
+    def cutoff(L, C):
+        return 1/(2*3.14 * (L * C)**0.5)
+    # print("cutoff (GHz)", cutoff(cap*2, tot_inductance)/1e9)
+
+    return bowtie, connection_ref
+
 def get_one_stage_of_bowtie(skip_mean=False, existing_ind=0):
-    cutout_width, cutout_height = 465, 226 + 20 - 2
-    bowtie = KleCutOut(create_shape(layers["SC"], [
+    cutout_width, cutout_height = 465 - 320, 226 + 20 - 2
+    bowtie = KleCutOut(create_shape(layers["SC_FINE"], [
         (100-1-18, 20), (100-1-18, -cutout_height), (-cutout_width, -cutout_height), (-cutout_width, 20)
     ]))
 
-    intercap, cap = get_interdigit_cap(layers["SC"], 4, 4, 120, 25)
+    intercap, cap = get_interdigit_cap(layers["SC_FINE"], 4, 4, 120, 25)
     bowtie.add_element(intercap.move(-138-7 + 15, -107*2 - 4 - 20 - 2))
     bowtie.add_element(intercap.get_copy().flip_vertically().move(0, -224))
 
@@ -269,6 +384,12 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, Nconn=4):
     
     fine_res.add_element(trace)
     
+    # markers
+    local_m = get_local_square()
+    layout.add_element(local_m.move(X0, Y0 - 60))
+    res_reference.add_element(local_m)
+
+
     _Z, _f = get_cpw_impedance(0.5, 24.5, LSHEET, EPS, _len)
     print(f"RES Z: {_Z}, freq: {_f/1e9}, len: {_len}")
 
@@ -300,12 +421,11 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, Nconn=4):
         fine_res.add_element(fout_trace.move(X0 -15 + n * 10, Y0 - 0.25 - SPACE_FOR_DOT_LENGTH - 20))
         lend_x, lend_y = N_and_path[n][-1][0] + X0 -15 + n*10, N_and_path[n][-1][1] + Y0 -20.25 - SPACE_FOR_DOT_LENGTH
 
-        fout_trace, _ = get_routed_cpw(layers["SC_FINE"], N_and_fout[n], width=6, gap=1, radii=5.5, phi_step=0.1)
+        fout_trace, _ = get_routed_cpw(layers["SC_FINE"], N_and_fout[n], width=6, gap=1, radii=6, phi_step=0.1)
         layout.add_element(fout_trace.move(lend_x, lend_y))
         res_reference.add_element(fout_trace)
 
-        from kle.layout.resonator_elements import get_cpw_LC
-        print(get_cpw_LC(6, 1, LSHEET, EPS, _), get_cpw_impedance(6, 1, LSHEET, EPS))
+        print("fanout", get_cpw_LC(6, 1, LSHEET, EPS, _), get_cpw_impedance(6, 1, LSHEET, EPS, _))
         
         lend_x, lend_y = N_and_fout[n][-1][0] + lend_x, N_and_fout[n][-1][1] + lend_y
 
@@ -315,34 +435,47 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, Nconn=4):
         layout.add_element(bt)
         res_reference.add_element(bt)
 
+        # bt extra
+        extra, _ = get_routed_cpw(layers["SC_FINE"], [
+            (0, 0), (0, -300), (0, -600)
+        ], 8, 1)
+        layout.add_element(extra.move(lend_x, lend_y-224))
+        res_reference.add_element(extra)
+
+        # bt inductance
+        ind, _ = get_cutout_meander()
+        layout.add_element(ind.rotate_left().move(lend_x + 114, lend_y-224-681))
+        res_reference.add_element(ind)
+        lend_y = lend_y - 600
+
         # Tpiece
         tpiece = get_tpiece(
-            layers["SC"], connection_width=8, connection_gap=1, tside="left", textra=n*300, height=200, straight_extra=0, tlen=300
+            layers["SC_FINE"], connection_width=8, connection_gap=1, tside="left", textra=n*300, height=200, straight_extra=0, tlen=300
         )
         layout.add_element(tpiece.move(lend_x, lend_y-544))
         res_reference.add_element(tpiece)
 
         # Fast cap
-        port_co = KleCutOut(create_shape(layers["SC"], [
+        port_co = KleCutOut(create_shape(layers["SC_FINE"], [
             (-100, -250+147), (1150-813, -250+147), (1150-813, 700-494), (-100, 700-494)
         ]))
-        port_cap, cval = get_interdigit_cap(layers["SC"], 3, 3, 100, 40, extra_end=False)
+        port_cap, cval = get_interdigit_cap(layers["SC_FINE"], 3, 3, 100, 40, extra_end=False)
         print("filter_cval (pF)", cval*1e12)
         port_co.add_element(port_cap)
         port_co.add_element(create_shape(
-            layers["SC"], [
+            layers["SC_FINE"], [
                 (0, -80), (8, -80), (8, 20), (0, 20)
             ]
         ).move(45-1.5+(185.5-43.5)/2, -23))
         port_co.add_element(create_shape(
-            layers["SC"], [
+            layers["SC_FINE"], [
                 (0, 0), (8, 0), (8, 100), (0, 100)
             ]
         ).move(45-1.5+(185.5-43.5)/2, -25+300-169))
         port = get_cpw_port(
-            layers["SC"], connection_width=8,
-            connection_gap=4, port_gap=10,
-            port_length=160, port_width=160, taper_length=80
+            layers["SC_FINE"], connection_width=8,
+            connection_gap=4, port_gap=30,
+            port_length=160, port_width=250, taper_length=80
         ).rotate_left().move(118.5, -103)
         port.add_element(port_co)
         
@@ -352,8 +485,8 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, Nconn=4):
 
         # slow ind
         mpath = get_meander_path(100, 20, 30)
-        mtrace, mlen = get_routed_trace(layers["SC"], [(0, 10), ] + mpath, width_start=1, width_end=1, radii=4)
-        meander_co = KleCutOut(create_shape(layers["SC"], [
+        mtrace, mlen = get_routed_trace(layers["SC_FINE"], [(0, 10), ] + mpath, width_start=1, width_end=1, radii=4)
+        meander_co = KleCutOut(create_shape(layers["SC_FINE"], [
             (-20, 10), (120, 10), (120, mpath[-1][1]), (-20, mpath[-1][1])
         ]))
         print("Meander inductance", mlen * LSHEET/1)
@@ -363,12 +496,12 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, Nconn=4):
 
         # DC Port
         port = get_cpw_port(
-            layers["SC"], connection_width=8,
-            connection_gap=4, port_gap=10,
-            port_length=160, port_width=160, taper_length=80
+            layers["SC_FINE"], connection_width=8,
+            connection_gap=4, port_gap=30,
+            port_length=160, port_width=250, taper_length=80
         ).rotate_left().move(0, -900)
 
-        port_conn, _ = get_routed_cpw(layers["SC"], [(0, 0), (0, -50), (0, -900)], 8, 4)
+        port_conn, _ = get_routed_cpw(layers["SC_FINE"], [(0, 0), (0, -50), (0, -900)], 8, 4)
         port.add_element(port_conn)
 
         layout.add_element(port.move(lend_x, lend_y-754-600))
@@ -432,7 +565,7 @@ def get_one_sample_cell(res_len, mid_cap_hwidth, mid_cap_len, Nconn=4):
 
 res_0, rpl_0, fr_0 = get_one_sample_cell(800, 0.5, 50, Nconn=4)
 # === ADD ===
-res_0.move(3750, 4830)
+res_0.move(3750-670, 4830)
 pl_co.add_element(rpl_0)
 layout.add_element(fr_0)
 
@@ -440,7 +573,7 @@ layout.add_element(fr_0)
 
 res_2, rpl_2, fr_2 = get_one_sample_cell(900, 0.5, 50, Nconn=3)
 # === ADD ===
-res_2.move(6000, 4830).flip_vertically().flip_horizontally().move(400, 340)
+res_2.move(6000, 4830).flip_vertically().flip_horizontally().move(400+670, 340)
 pl_co.add_element(rpl_2)
 layout.add_element(fr_2)
 
@@ -481,6 +614,11 @@ def get_meander_path(height, step, N):
 #     DT_cutout.add_element(DT_trace.move(*pos))
 
 # layout.add_element(DT_cutout)
+
+
+# print("1", get_cpw_impedance(1, 20, 0, EPS, 1500))
+# print("2", get_cpw_impedance(20, 1, 0, EPS, 1500))
+
 
 layout.build_to_file(
     r"/home/jyrgen/Documents/PhD/design_files/B00_63pH_11_7eps_20250616.gds"

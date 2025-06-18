@@ -180,9 +180,10 @@ def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100, lambda_frac=0.5):
 
     ll = ind_per_len + L_sheet/center_width
     cl = cap_per_len
-    
     imp = (ll/cl)**0.5
-    freq = 1/(ll * cl)**0.5 * (1/(1e-6 * l)) 
+    freq = 1e9/(ll*1e9 * cl*1e9)**0.5 * (1/(1e-6 * l)) 
+    
+    print(ll, cl, 1/(ll * cl)**0.5)
 
     return imp, freq * lambda_frac
 
