@@ -166,6 +166,9 @@ class KleShape(KleLayerPoints):
             if positive polarity add polygon (can overlap)
             if negative add hole
         """
+        # First priority is overridden target, then layer base (cutouts in neg layers work the same)
+        target = target or self.layer.layer_base
+
         if target is not None:
             points = [
                 pya.Point(

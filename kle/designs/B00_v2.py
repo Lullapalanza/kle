@@ -578,6 +578,32 @@ pl_co.add_element(rpl_2)
 layout.add_element(fr_2)
 
 
+
+LPFX, LPFY = 8000, 3000
+# ADD LPF TEST
+bt, r = get_one_stage_of_bowtie(False, existing_ind=0)
+bt.rotate_left().move(LPFX - 112, LPFY - 81 + 2)
+layout.add_element(bt)
+
+# bt extra
+extra, _ = get_routed_cpw(layers["SC_FINE"], [
+(0, 0), (0, -300), (0, -600)
+], 8, 1)
+layout.add_element(extra.move(LPFX, LPFY-224))
+
+# bt inductance
+ind, _ = get_cutout_meander()
+layout.add_element(ind.rotate_left().move(LPFX + 114, LPFY-224-681))
+
+port = get_cpw_port(
+    layers["SC_FINE"], connection_width=8,
+    connection_gap=4, port_gap=30,
+    port_length=160, port_width=250, taper_length=80
+).rotate_left().move(LPFX, LPFY)
+layout.add_element(port.move(0, 2).flip_vertically())
+layout.add_element(port.get_copy().flip_vertically().move(0, -1146))
+
+
 # === TEMP ==== FOR DOSE TEST
 def get_meander_path(height, step, N):
     path = [
