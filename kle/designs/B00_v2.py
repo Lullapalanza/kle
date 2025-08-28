@@ -38,7 +38,7 @@ border_shape = create_shape(layers["SC"], [
 layout.add_element(border_shape.move(500, 500))
 layout.add_element(border_shape.get_copy().move(0, 8900))
 layout.add_element(border_shape.get_copy().rotate_right().move(0, 9000))
-layout.add_element(border_shape.get_copy().rotate_right().move(9000, 9000))
+layout.add_element(border_shape.get_copy().rotate_right().move(9000-100, 9000))
 # === END BORDER ===
 
 # === DEF MARKER ===

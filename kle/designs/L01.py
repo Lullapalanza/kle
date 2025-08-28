@@ -13,8 +13,8 @@ from kle.layout.layout_trace_routing import get_routed_cpw, get_routed_trace
 from kle.layout.layout_connections import ConnectedElement
 
 
-LSHEET = 90e-12
-EPS = 11.7
+LSHEET = 200e-12
+EPS = 12.4
 
 
 LAYER_NAMES = [
@@ -198,12 +198,13 @@ def get_TS(layer, bond_pad_width, bond_pad_heigth, widths, length):
 tss = get_TS(layers["SC"], 400, 200, [2, 1.5, 1], 50)
 
 layout.add_element(tss.get_copy().move(1000, 500))
+layout.add_element(tss.get_copy().move(1000, 4500))
 layout.add_element(tss.get_copy().flip_horizontally().move(5000, 500))
 layout.add_element(tss.get_copy().move(2490, 500))
-# layout.add_element(tss.get_copy().flip_horizontally().flip_vertically().move(5000, 5000))
+layout.add_element(tss.get_copy().move(2490, 4500))
 
 pl.move(0, -300)
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/L01_90pH_11_7eps_20250226.cif"
+    r"/home/jyrgen/Documents/PhD/design_files/L01_200pH_12_4eps_20250525.cif"
 )
