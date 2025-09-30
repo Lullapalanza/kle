@@ -14,19 +14,40 @@ from kle.layout.resonator_elements import get_cpw_LC
 
 
 
-LSHEET = 400e-12 # 63 ph/sq
+LSHEET = 100e-12 # 63 ph/sq
 EPS = 11.7
 
 LAYER_NAMES = [
-    "SC", "SC_FINE"#, "MARKER_0", "MARKER_1"
+    "SC", "SC_FINE", "BORDER" #, "MARKER_0", "MARKER_1"
 ]
 layout = KleLayout(10000, 10000, LAYER_NAMES)
 layers = layout.get_layers()
 
 # === START BORDER ===
-border_shape = create_shape(layers["SC"], [
+border_shape = create_shape(layers["BORDER"], [
     [0, 0], [5000, 0], [5000, 100], [0, 100]
 ])
+
+border_square_0 = create_shape(layers["SC"], [
+    [0, 0], [10, 0], [10, 10], [0, 10]
+])
+border_square_1 = create_shape(layers["SC_FINE"], [
+    [0, 0], [10, 0], [10, 10], [0, 10]
+])
+
+layout.add_element(border_square_0.move(500, 500))
+layout.add_element(border_square_1.move(500, 500))
+
+layout.add_element(border_square_0.get_copy().move(4990, 0))
+layout.add_element(border_square_1.get_copy().move(4990, 0))
+
+layout.add_element(border_square_0.get_copy().move(4990, 4990))
+layout.add_element(border_square_1.get_copy().move(4990, 4990))
+
+layout.add_element(border_square_0.get_copy().move(0, 4990))
+layout.add_element(border_square_1.get_copy().move(4990, 4990))
+
+
 layout.add_element(border_shape.move(500, 500))
 layout.add_element(border_shape.get_copy().move(0, 4900))
 layout.add_element(border_shape.get_copy().rotate_right().move(0, 5000))
@@ -104,7 +125,7 @@ def get_local_square():
 
 # === START PL ===
 print("=== PL ===")
-PL_WIDTH = 350
+PL_WIDTH = 115 # 80 # 350
 PL_GAP = 2
 PL_LENGTH = 3500
 
@@ -124,7 +145,7 @@ pl, pl_length = get_routed_cpw(
     radii=40
 )
 
-PORT_GAP = 20 * PL_GAP
+PORT_GAP = 10 * PL_GAP
 PORT_WIDTH = 2 * PL_WIDTH
 PORT_LEN = 300
 
@@ -207,61 +228,95 @@ def get_meander_res_imp(w, N, gap, arm_len, gnd_cap, L_sheet, eps, lambda_frac=0
 # === START RESONATORS ===
 
 res_poss = [
-    (-600, 523),
-    (-100, 523),
-    (400, 523),
+    (-600, 523+135-17.5),
+    (-100, 523+135-17.5),
+    (400, 523+135-17.5),
 
-    (1100, 523),
-    (1600, 523),
-    (2100, 523),
-
-    (-350, 523 + 1000 - 346), # Top
-    (-350 + 500, 523 + 1000 - 346),
-    (-350 + 1000, 523 + 1000 - 346),
-
-    (1100 + 250, 523 + 1000 - 346),
-    (1100 + 750, 523 + 1000 - 346),
+    (1100, 523+135-17.5),
+    (1600, 523+135-17.5),
+    (2100, 523+135-17.5),
 ]
 paramss = [
-    (0.5, 18, 2.2, 32),
-    (0.5, 18, 2.1, 30),
-    (0.5, 18, 2, 28),
+    (2, 32, 3, 80),
+    (2, 32, 3, 84),
+    (2, 32, 3, 88),
 
-    (0.2, 18, 1.5, 25.5),
-    (0.3, 18, 2, 28),
-    (0.4, 18, 2, 30.5),
-
-    (0.2, 20, 1.9, 28), # TOP
-    (0.2, 20, 1.8, 27),
-    (0.2, 20, 1.7, 26),
-
-    (0.3, 14, 2.2, 23), # TOP
-    (0.3, 14, 2.2, 22),
+    (0.5, 30, 1.9, 42),
+    (0.5, 30, 1.85, 40),
+    (0.5, 30, 1.8, 38),
 ]
 
 
 for i, (res_pos, param) in enumerate(zip(res_poss, paramss)):
     res_hole = create_shape(layers["SC"], [
-        (0, 0), (300, 0), (300, 300), (0, 300)
+        (0, -100), (300, -100), (300, 300), (0, 300)
     ])
     PL_CO.add_element(res_hole.move(2100 + res_pos[0], 2000 + res_pos[1]))
 
     smaller_end = [3, 6, 7, 8, 9, 10]
 
-    meander_path = get_resonator_path(*param, end_len=15 if i not in smaller_end else 10)
+    meander_path = get_resonator_path(*param, end_len=15)
     meander_res, res_len = get_routed_trace(
         layers["SC_FINE"],
         meander_path,
         width_start=param[0],
         width_end=param[0],
-        radii=1 if param[2] >= 2 else 0.5
+        radii=1 if param[0] < 1 else 2
     )
+    if i in [3, 4, 5]:
+        meander_res.move(0, 90)
+
+    meander_res.move(0, -50)
 
     test_imp, test_freq = get_meander_res_imp(*param, 120, L_sheet=LSHEET, eps=EPS, end_len=15 if i not in smaller_end else 10)
     print(f"{i} - len (um):", res_len, "imp:", test_imp, "freq:", test_freq/1.425e9)
     print("ratio:", (param[2] + param[0]) * param[1] / param[3])
 
     layout.add_element(meander_res.move(2250 - param[3]/2 + res_pos[0], 2100 + res_pos[1]))
+
+
+
+
+Fs = [4.1e9, 4.2e9, 4.3e9, 4.4e9, 4.5e9]
+top_Y = 3080 - 18 + 50
+pos = [
+    (1550, top_Y + 50), (2150, top_Y + 60), (2750, top_Y + 70), (3350, top_Y + 80),
+    (3950, top_Y + 90)
+]
+params = [
+    (2, 7), (2, 8), (1.5, 9), (1, 10), (0.5, 11)
+]
+
+for f, pos, prms in zip(Fs, pos, params):
+    res_hole = create_shape(layers["SC"], [
+        (0, 0), (500, 0), (500, 500), (0, 500)
+    ])
+    PL_CO.add_element(res_hole.move(1575 + pos[0] - 1080 - 400, 3500-458 + 17.5))
+
+    mL, cL = get_L_length(f, 1000, width=prms[0], L_sheet=LSHEET, N=prms[1], eps=EPS)
+    # print(mL, cL)
+
+    lcp = LCParams()
+    lcp.interdigit_cap_L = cL
+    lcp.interdigit_cap_N = prms[1]
+    lcp.interdigit_cap_G = 5
+    lcp.interdigit_cap_W = 5
+
+    lcp.meander_height = cL + 15
+    lcp.meander_L = mL
+    lcp.meander_N = 4
+    lcp.cutout_width = 500
+    lcp.meander_W = prms[0]
+    lcp.meander_offset = 50 if f < 4.45e9 else 20
+
+    resonator = get_interdigit_LC(layers["SC_FINE"], lcp)
+
+    # resonator.move(80, 25)
+    resonator.rotate_by_angle(90).move(80, -30)
+
+    layout.add_element(
+        resonator.move(*pos)
+    )
 
 # === END RESONATORS ===
 
@@ -287,14 +342,15 @@ def get_TS(layer0, layer1, bond_pad_width, bond_pad_heigth, widths, length):
     return cutout
 
 
-tss0 = get_TS(layers["SC"], layers["SC_FINE"], 200, 100, [1, 0.5, 0.2], 10)
+tss0 = get_TS(layers["SC_FINE"], layers["SC_FINE"], 100, 100, [2, 1.5, 1.25], 10)
 layout.add_element(tss0.get_copy().move(2000, 1200))
 layout.add_element(tss0.get_copy().move(2000, 4500-320))
 
-tss1 = get_TS(layers["SC"], layers["SC_FINE"], 200, 100, [0.5, 0.3, 0.2], 10)
+tss1 = get_TS(layers["SC_FINE"], layers["SC_FINE"], 100, 100, [1, 0.5, 0.3], 10)
 layout.add_element(tss1.get_copy().move(3490, 1200))
 layout.add_element(tss1.get_copy().move(3490, 4500-320))
 
+
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/MR00_400pH_11_7eps_20250902.gds"
+    r"/home/jyrgen/Documents/PhD/design_files/MR00_v2_100pH_11_7eps_20250929.gds"
 )

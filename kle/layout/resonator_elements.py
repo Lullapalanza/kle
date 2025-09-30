@@ -75,12 +75,12 @@ class LCParams:
 
 
 def get_interdigit_LC(layer, params=LCParams()):
-    cutout = KleCutOut(create_shape(layer, [
-        [0, 0],
-        [params.cutout_width, 0],
-        [params.cutout_width, params.cutout_height],
-        [0, params.cutout_height]
-    ]))
+    # cutout = KleCutOut(create_shape(layer, [
+    #     [0, 0],
+    #     [params.cutout_width, 0],
+    #     [params.cutout_width, params.cutout_height],
+    #     [0, params.cutout_height]
+    # ]))
 
     # Interdigit Cap
     W, L, G, N = params.interdigit_cap_W, params.interdigit_cap_L, params.interdigit_cap_G, params.interdigit_cap_N
@@ -155,10 +155,11 @@ def get_interdigit_LC(layer, params=LCParams()):
 
     trace.add_element(interdigit_cap)
     trace.move(200, 100)
+    return trace
 
-    cutout.add_element(trace)
+    # cutout.add_element(trace)
 
-    return cutout, trace
+    # return cutout, trace
 
 
 import scipy.special as sp
@@ -183,8 +184,6 @@ def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100, lambda_frac=0.5):
     imp = (ll/cl)**0.5
     freq = 1e9/(ll*1e9 * cl*1e9)**0.5 * (1/(1e-6 * l)) 
     
-    print(ll, cl, 1/(ll * cl)**0.5)
-
     return imp, freq * lambda_frac
 
 def get_cpw_LC(center_width, gap, L_sheet, eps, l=100):
