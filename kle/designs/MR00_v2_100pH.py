@@ -14,7 +14,7 @@ from kle.layout.resonator_elements import get_cpw_LC
 
 
 
-LSHEET = 100e-12 # 63 ph/sq
+LSHEET = 200e-12 # 63 ph/sq
 EPS = 11.7
 
 LAYER_NAMES = [
@@ -269,7 +269,11 @@ for i, (res_pos, param) in enumerate(zip(res_poss, paramss)):
     meander_res.move(0, -50)
 
     test_imp, test_freq = get_meander_res_imp(*param, 120, L_sheet=LSHEET, eps=EPS, end_len=15 if i not in smaller_end else 10)
-    print(f"{i} - len (um):", res_len, "imp:", test_imp, "freq:", test_freq/1.425e9)
+    print(f"{i} - len (um):", res_len, "imp:", test_imp, "freq:", test_freq/1.425e9, "calc_imp": test_freq)
+    cpw_Z, cpw_f = get_cpw_impedance(
+        param[0], 200, L_sheet=LSHEET, eps=EPS, l=res_len, lambda_frac=0.5
+    )
+    print("cpw:", cpw_Z, cpw_f/1e9)
     print("ratio:", (param[2] + param[0]) * param[1] / param[3])
 
     layout.add_element(meander_res.move(2250 - param[3]/2 + res_pos[0], 2100 + res_pos[1]))
@@ -351,6 +355,7 @@ layout.add_element(tss1.get_copy().move(3490, 1200))
 layout.add_element(tss1.get_copy().move(3490, 4500-320))
 
 
-layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/MR00_v2_100pH_11_7eps_20250929.gds"
-)
+layout.build()
+# layout.build_to_file(
+#     r"/home/jyrgen/Documents/PhD/design_files/MR00_v2_100pH_11_7eps_20250929.gds"
+# )
