@@ -53,6 +53,7 @@ def get_L_length(f, Z0, width=2, L_sheet=10e-12, N=5, eps=11.7):
 
     meander_len = L * width / L_sheet
     cap_len = C / ((eps + 1) * ((N-3) * 4.409e-18 + 9.92e-18))
+    print(width, meander_len)
 
     return meander_len, cap_len
     
@@ -146,7 +147,8 @@ def get_interdigit_LC(layer, params=LCParams()):
 
     len_change = (params.meander_L - smoothed_len) / (params.meander_N + 2)
     turn_len += len_change
-    
+    assert turn_len > 0
+
     path = get_path(turn_len, turn_height)
     
     trace, tr_len = get_routed_trace(layer, path, width_start=Wm, width_end=Wm, radii=3)
