@@ -201,26 +201,19 @@ def get_Cl_traces(w, gap, eps):
 
 def get_meander_res_imp(w, N, gap, arm_len, gnd_cap, L_sheet, eps, lambda_frac=0.5, end_len=15):
     eps_r = (1+eps)/2
-    cap_between_arms = get_Cl_traces(w, gap, eps)
+    cap_between_arms = get_Cl_traces(w, gap, eps)/2
     print("Cl between arms: ", cap_between_arms)
     
     
-    
-    k_meander = w / (w + 2 * gap)
-    k_gnd = w / (w + 2 * gnd_cap)
-
-    k_m_brim = (1-k_meander**2)**0.5
+    k_gnd = N * w / (N * w + 2 * gnd_cap)
     k_gnd_brim = (1-k_gnd**2)**0.5
-
-    K_m = sp.ellipk(k_meander)
     K_g = sp.ellipk(k_gnd)
-
-    K_m_brim = sp.ellipk(k_m_brim)
     K_g_brim = sp.ellipk(k_gnd_brim)
 
-    C = eps_0 * (1+eps) * K_m/K_m_brim # cap per meander len
+    # C = eps_0 * (1+eps) * K_m/K_m_brim # cap per meander len
     Cg = eps_0 * (1+eps) * K_g/K_g_brim # cap per gnd len
 
+    print("Cg per n:", Cg/N)
     center_width = w * 1e-6
 
     tot_cap = 0
@@ -231,7 +224,7 @@ def get_meander_res_imp(w, N, gap, arm_len, gnd_cap, L_sheet, eps, lambda_frac=0
     # ===
 
     for n in range(N):
-        tot_cap += 1e-6 * (arm_len) * C * Cg * ( 1/(C + Cg * n) + 1/(C + Cg * (N-n-1)))
+        # tot_cap += 1e-6 * (arm_len) * C * Cg * ( 1/(C + Cg * n) + 1/(C + Cg * (N-n-1)))
         tot_ind += 1e-6 * (arm_len + gap) * (L_sheet / center_width - ind_per_len)
 
     tot_ind += 1e-6 * (end_len * 2) * L_sheet / center_width # Add eends
