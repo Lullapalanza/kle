@@ -21,7 +21,7 @@ eps_0 = 8.8542e-12
 mu_0 = np.pi * 4e-7
 
 
-LSHEET = 260e-12 # pH/sq (matches material I thought was 200pH - need to figure out how to get the calc to put 2um meander at 5.5e9, 0.5um at 6e9 ish)
+LSHEET = 200e-12 # 350e-12 # 260e-12 # pH/sq (matches material I thought was 200pH - need to figure out how to get the calc to put 2um meander at 5.5e9, 0.5um at 6e9 ish)
 EPS = 11.7
 
 LAYER_NAMES = [
@@ -201,32 +201,25 @@ def get_Cl_traces(w, gap, eps):
 
 
 def get_segment_imp_to_gnd(omega, _n, Cgl, Cap_arml, dl, Cgroundtot):
-    imp_to_gnd = 2 / (1.j * omega * Cgl * dl) + 1/(1.j * omega * Cap_arml * dl)
-    # imp_to_gnd = 2 / (1.j * omega * Cgroundtot * dl) + 1/(1.j * omega * Cap_arml * dl)
+    N0_MAGIC = 1
+    imp_to_gnd = 2 / (1.j * omega * Cgl * dl * N0_MAGIC) + 1/(1.j * omega * Cap_arml * dl)
     for _ in range(1, _n):
         imp_to_gnd = (1/imp_to_gnd + 1.j * omega * Cgl * dl)**-1 + 1/(1.j * omega * Cap_arml * dl)
     return imp_to_gnd
 
 
 def get_Z_meander(omega, w, gap, N_arms, arm_len, gnd_gap, L_sheet, eps, N_cpw_disc=10000, lambda_frac=0.5, end_len=15):
-    cap_between_arms = get_Cl_traces(w/2, gap, eps)
+    cap_between_arms = get_Cl_traces(w, gap, eps)
     print("Cl between arms: ", cap_between_arms)
     
+    MAGIC_GND_MULT = 1 # 4 # - (w-0.5)/1.5
+
     k_gnd = N_arms * w / (N_arms * w + 2 * gnd_gap)
     k_gnd_brim = (1-k_gnd**2)**0.5
     K_g = sp.ellipk(k_gnd)
     K_g_brim = sp.ellipk(k_gnd_brim)
     Cg = eps_0 * (1+eps) * K_g/K_g_brim # cap per gnd len
     Cgm = Cg /N_arms
-    
-    # FULL GND
-    # k_gnd = w / (w + 2 * gnd_gap)
-    # k_gnd_brim = (1-k_gnd**2)**0.5
-    # K_g = sp.ellipk(k_gnd)
-    # K_g_brim = sp.ellipk(k_gnd_brim)
-    # Cg = eps_0 * (1+eps) * K_g/K_g_brim # cap per gnd len
-    # Cgm = Cg
-
     print("Cg per n:", Cgm)
 
     center_width_si = w * 1e-6
@@ -236,22 +229,43 @@ def get_Z_meander(omega, w, gap, N_arms, arm_len, gnd_gap, L_sheet, eps, N_cpw_d
     seg_imp_to_gnd0 = get_segment_imp_to_gnd(omega, 0, Cgm, cap_between_arms, dl, Cgm)
     seg_imp_to_gnd1 = get_segment_imp_to_gnd(omega, N_arms-1, Cgm, cap_between_arms, dl, Cgm)
     
-    imp_to_gnd = (1.j * omega * Cgm * dl + 1/seg_imp_to_gnd0 + 1/seg_imp_to_gnd1)**-1
-    
-    for j in range(N_arms):
+    # FIRST END OF RESONATOR
+    # imp_to_gnd = 0
+    lend = 1e-6 * end_len / 100
+    imp_to_gnd = 1/(1.j * omega * lend * Cgm * N_arms) 
+    imp_to_gnd = imp_to_gnd + 1.j * omega * L_sheet * lend / center_width_si
+
+    for _ in range(1, 100):
+        imp_to_gnd = (1/imp_to_gnd + (1.j * omega * lend * Cgm * N_arms))**-1 
+        imp_to_gnd = imp_to_gnd + 1.j * omega * L_sheet * lend / center_width_si
+
+    for j in range(N_arms+1):
         seg_imp_to_gnd0 = get_segment_imp_to_gnd(omega, j, Cgm, cap_between_arms, dl, Cgm)
         seg_imp_to_gnd1 = get_segment_imp_to_gnd(omega, N_arms-j-1, Cgm, cap_between_arms, dl, Cgm)
         for i in range(N_cpw_disc//N_arms):
             imp_to_gnd = imp_to_gnd + 1.j * omega * L_sheet * dl / center_width_si
             imp_to_gnd = (1/imp_to_gnd + (1.j * omega * Cgm * dl) + 1/seg_imp_to_gnd0 + 1/seg_imp_to_gnd1)**-1
 
-    return imp_to_gnd    
+        # END LOOP
+        lend =  1e-6 * (gap + w)/100
+        for _ in range(100):
+            imp_to_gnd = imp_to_gnd + 1.j * omega * L_sheet * lend / center_width_si
+            imp_to_gnd = (1/imp_to_gnd + (1.j * omega * lend * Cgm * N_arms))**-1 
+
+    # ENDS OF RESONATOR
+    lend = 1e-6 * end_len / 100
+    for _ in range(100):
+        imp_to_gnd = imp_to_gnd + 1.j * omega * L_sheet * lend / center_width_si
+        imp_to_gnd = (1/imp_to_gnd + (1.j * omega * lend * Cgm * N_arms))**-1 
+
+
+    return imp_to_gnd
 
 
 def get_meander_res_imp(w, N, gap, arm_len, gnd_cap, L_sheet, eps, lambda_frac=0.5, end_len=15):
     import matplotlib.pyplot as plt
 
-    frequencies = np.linspace(1e9, 40e9, 10000)
+    frequencies = np.linspace(1e9, 10e9, 5000)
     imp = get_Z_meander(
         frequencies * 2 * np.pi,
         w,
@@ -262,9 +276,30 @@ def get_meander_res_imp(w, N, gap, arm_len, gnd_cap, L_sheet, eps, lambda_frac=0
         L_sheet=L_sheet,
         eps=eps
     )
+
+    import scipy.optimize as opt
+
+    def parallel_res(omega, omega_r, z0):
+        L = z0/omega_r
+        C = 1/(z0 * omega_r)
+        return np.abs((1.j * omega * C + 1/(1.j * omega * L)))
+
+    p0 = [frequencies[np.argmax(np.abs(imp))] * 2 * np.pi, 3000]
+    fit_range_size = 500
+    fit_range = np.arange(np.argmax(np.abs(imp)) - fit_range_size, np.argmax(np.abs(imp)) + fit_range_size, 1)
+    
+    res, _ = opt.curve_fit(parallel_res, frequencies[fit_range] * 2 * np.pi, 1/np.abs(imp[fit_range]), p0=p0, ftol=1e-14, gtol=1e-14)
+    # print((1e-9/(2*np.pi))/(p0[0] * p0[1])**0.5)
+    fit_lump_L = res[1]/res[0]
+    fit_lump_C = 1/(res[1] * res[0])
+
+    eq_cpw_cap = fit_lump_C * 2
+    eq_cpw_ind = fit_lump_L * np.pi**2 / 2
+    print("Z0 fit:", (eq_cpw_ind/eq_cpw_cap)**0.5)
+
     plt.plot(frequencies, np.abs(imp), label=f"{w}")
-    plt.legend()
-    plt.show()
+    plt.plot(frequencies[fit_range], 1/parallel_res(frequencies[fit_range] * 2 * np.pi, *p0), ls="--")
+    plt.plot(frequencies[fit_range], 1/parallel_res(frequencies[fit_range] * 2 * np.pi, *res))
 
     
 #     return imp, freq * lambda_frac
@@ -283,14 +318,21 @@ res_poss = [
     (2100, 523+135-17.5-42.5),
 ]
 paramss = [
-    # (2, 2, 3, 72),
     (2, 22, 3, 72),
-    # (2, 22, 3, 70),
-    # (2, 22, 3, 68),
+    (2, 22, 3, 70),
+    (2, 22, 3, 68),
 
-    (0.5, 20, 2.4, 38),
-    # (0.5, 20, 2.2, 36),
-    # (0.5, 20, 2, 35.1),
+    (0.5, 30, 0.8, 32),
+    (0.5, 30, 0.8, 31),
+    (0.5, 30, 0.8, 30),
+
+    # (2, 32, 3, 100),
+    # (2, 32, 3, 104),
+    # (2, 32, 3, 108),
+
+    # (0.5, 30, 1.9, 48),
+    # (0.5, 30, 1.85, 46),
+    # (0.5, 30, 1.8, 44),
 ]
 
 
@@ -313,6 +355,7 @@ for i, (res_pos, param) in enumerate(zip(res_poss, paramss)):
     if i in [3, 4, 5]:
         meander_res.move(0, 90)
 
+
     meander_res.move(0, -50)
 
     cpw_Z, cpw_freq = get_cpw_impedance(
@@ -321,14 +364,18 @@ for i, (res_pos, param) in enumerate(zip(res_poss, paramss)):
     print("CPW:", cpw_Z, cpw_freq/1e9)
     print("CPW calc:", 2 * cpw_freq * res_len/param[0] * LSHEET)
     
-    test_imp, test_freq = get_meander_res_imp(*param, 120, L_sheet=LSHEET, eps=EPS, end_len=15 if i not in smaller_end else 10)
+    test_imp, test_freq = get_meander_res_imp(*param, 120, L_sheet=LSHEET, eps=EPS, end_len=5)
     print(f"{i} - len (um):", res_len, "imp:", test_imp*1.425, "freq:", test_freq/1.425e9)
     print("ratio:", (param[2] + param[0]) * param[1] / param[3])
     
 
     layout.add_element(meander_res.move(2250 - param[3]/2 + res_pos[0], 2100 + res_pos[1]))
 
-
+    import matplotlib.pyplot as plt
+    if i in [2, 5]:
+        plt.ylim(-10, 1e6)
+        plt.legend()
+        plt.show()
 
 
 Fs = [5.1e9, 5.2e9, 5.3e9, 5.4e9, 5.5e9]
@@ -354,6 +401,7 @@ for f, pos, prms in zip(Fs, pos, params):
     Lguess = 260e-12
     C = 1/(2 * 3.14 * f * z0)
     print(f"==== For {Lguess}", 1e-9/(2 * np.pi * (C * mL * Lguess / prms[0])**0.5))
+    print(f"lumped {C}")
 
     lcp = LCParams()
     lcp.interdigit_cap_L = cL

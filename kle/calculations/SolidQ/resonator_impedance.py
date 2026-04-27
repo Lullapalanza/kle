@@ -73,24 +73,29 @@ if __name__ == "__main__":
     parallel_Z = get_Z_parallel_LC(frequencies * 2 * np.pi, Lp, Cp)
     print("Lumped frequency (GHz)", (2e9*np.pi)**(-1)/(Lp*Cp)**0.5)
 
-    Lcpw = Lp * np.pi
-    Ccpw = Cp * np.pi
+    Lcpw = np.pi * Lp * (np.pi) / 2
+    Ccpw = np.pi * Cp * 2/np.pi
     cpw_Z = get_Z_discreete_cpw(frequencies * 2 * np.pi, Lcpw, Ccpw, 10000)
     print("CPW frequency (GHz):", 0.5e-9/(Lcpw*Ccpw)**0.5)
+    
+    print("CPW mult", (Lcpw/Ccpw)**0.5)
+
+    plt.plot(frequencies, np.abs(parallel_Z), label="lumped")
+    plt.plot(frequencies, np.abs(cpw_Z), label="CPW")
 
     # This never gets to a higher frequency
-    Ccompare = 1e-10
+    # Ccompare = 1e-10
 
-    Cshort = Ccompare # 1e-10
-    meander_Z = get_Z_shunted_meander_res(frequencies * 2 * np.pi, Lcpw, Ccpw, Cshort, 10000)
-
-    plt.plot(frequencies, np.abs(cpw_Z))
-    plt.plot(frequencies, np.abs(meander_Z))
-
-    for cshort in [1e-12, 1e-14, 1e-16, 1e-18, 1e-20]:
     # Cshort = Ccompare # 1e-10
-        meander2_Z = get_Z_crossC_meander_res(frequencies * 2 * np.pi, Lcpw, Ccpw, cshort, 20, 10000)
-        plt.plot(frequencies, np.abs(meander2_Z), label=cshort)
+    # meander_Z = get_Z_shunted_meander_res(frequencies * 2 * np.pi, Lcpw, Ccpw, Cshort, 10000)
+
+    # plt.plot(frequencies, np.abs(cpw_Z))
+    # plt.plot(frequencies, np.abs(meander_Z))
+
+    # for cshort in [1e-12, 1e-14, 1e-16, 1e-18, 1e-20]:
+    # # Cshort = Ccompare # 1e-10
+    #     meander2_Z = get_Z_crossC_meander_res(frequencies * 2 * np.pi, Lcpw, Ccpw, cshort, 20, 10000)
+    #     plt.plot(frequencies, np.abs(meander2_Z), label=cshort)
 
     plt.legend()
     # plt.plot(frequencies, np.abs(parallel_Z))
