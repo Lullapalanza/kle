@@ -199,15 +199,90 @@ shape.add_element(create_shape(layers["SC_FINE"], [(0, 0), (3.25, 0), (3.25, 2),
 PL_CO.add_element(create_shape(layers["SC"], [(0, 0), (300, 0), (300, 300), (0, 300)]).move(1900, 2581))
 layout.add_element(shape.move(2050, 2727))
 
+
 from kle.layout.resonator_elements import get_C
+
 filter_cap = get_interdigit_C(fk(5e-6, 5e-6), 70.5e-6, 15) * 2
-filter_ind = 10/6 * 3 * 100 * LSHEET
-print("filter cap:", filter_cap, "filter ind:", filter_ind)
-print("filter f", 1/(2e9*np.pi * (filter_cap * filter_ind)**0.5), "imp:", (filter_ind/filter_cap)**0.5)
+filter_ind =  500 * LSHEET
+
+print("filter cap target:", filter_cap, "filter ind target:", filter_ind)
+print("filter f target", 1/(2e9*np.pi * (filter_cap * filter_ind)**0.5), "imp:", (filter_ind/filter_cap)**0.5)
 
 lineZ, linef = get_cpw_impedance(center_width=30, gap=2, L_sheet=0, eps=EPS, l=1000)
 print("line connections", lineZ, linef/(2*np.pi*1e9))
 
+
+# === gate/lead connection ===
+
+line_connection = KleLayoutElement()
+bondpad_hole = create_shape(layers["SC"], [(0, 0), (0, 220+200+150), (220, 220+200+150), (220, 0)])
+bondpad = create_shape(layers["SC"], [(10, 10), (10, 210), (210, 210), (210, 10)])
+filter_ind_path = [(110, 210), (110, 240), (170, 240)]
+step_x, step_y = 120, 23
+for _ in range(3):
+    filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
+    filter_ind_path.append((filter_ind_path[-1][0]-step_x, filter_ind_path[-1][1]))
+    filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
+    filter_ind_path.append((filter_ind_path[-1][0]+step_x, filter_ind_path[-1][1]))
+
+filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
+filter_ind_path.append((filter_ind_path[-1][0]-step_x/2, filter_ind_path[-1][1]))
+filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y-4))
+
+filter_inductance, filter_ind_len = get_routed_trace(layers["SC"], filter_ind_path, width_start=2, width_end=2, radii=5)
+print("filter inductance len", filter_ind_len, LSHEET * filter_ind_len/2)
+
+# cap
+interdigit_cap = KleLayoutElement()
+N_finger, W, G, L = 15, 5, 5, 70
+for n in range(N_finger):
+    interdigit_cap.add_element(
+        create_shape(layers["SC"], [
+            [0, 0],
+            [W, 0],
+            [W, L],
+            [0, L]
+        ]).move(n * (W + G), (n%2)*G)
+    )
+end_conn = create_shape(layers["SC"], [
+    [-0, 0],
+    [-0, -W],
+    [(W + G) * N_finger - G, -W],
+    [(W + G) * N_finger - G, 0]
+])
+interdigit_cap.add_element(end_conn)
+interdigit_cap.add_element(end_conn.get_copy().move(0, L + G + W))
+
+# ===
+interdigit_cap.rotate_right()
+
+
+other_side = interdigit_cap.get_copy()
+other_side.flip_horizontally().move(-2*W, 0)
+
+
+layout.add_element(bondpad)
+layout.add_element(filter_inductance)
+
+
+line_connection.add_element(bondpad_hole)
+line_connection.add_element(bondpad)
+line_connection.add_element(filter_inductance)
+line_connection.add_element(interdigit_cap.move(115, 420+145))
+line_connection.add_element(other_side.move(115, 420+145))
+
+interdigit_cap.add_element(create_shape(layers["SC"], [(25, 420), (0, 420), (0, 420 + 150), (25, 420+150)]))
+other_side.add_element(create_shape(layers["SC"], [(25, 420), (0, 420), (0, 420 + 150), (25, 420+150)]).move(195, 0))
+line_connection.move(1000, 1000)
+
+PL_CO.add_element(bondpad_hole)
+
+layout.add_element(interdigit_cap)
+layout.add_element(other_side)
+
+
+# ===
+
 layout.build_to_file(
-    r"C:\Users\jyrgen\Documents\PhD\design\gds_files\USC07_20260427.gds"
+    r"/home/jyrgen/Documents/PhD/design_files/USC07_20260427.gds"
 )
