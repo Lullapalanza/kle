@@ -177,6 +177,7 @@ def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100, lambda_frac=0.5):
     Kbrim = sp.ellipk(kbrim)
 
     cap_per_len = 2 * eps_0 * (1+eps) * K/Kbrim
+    # ind_per_len = 3600 * np.pi**2 * eps_0 * Kbrim/K # 0.25 * mu_0 * Kbrim/K
     ind_per_len = 0.25 * mu_0 * Kbrim/K
 
     center_width = center_width * 1e-6
@@ -186,6 +187,9 @@ def get_cpw_impedance(center_width, gap, L_sheet, eps, l=100, lambda_frac=0.5):
     imp = (ll/cl)**0.5
     freq = 1e9/(ll*1e9 * cl*1e9)**0.5 * (1/(1e-6 * l)) 
     
+    C = 2 * eps_0 * (eps+1) * K/Kbrim
+    # print("other imp", (0.5 * (1+eps))**0.5 / (3e8 * C))
+
     return imp, freq * lambda_frac
 
 def get_cpw_LC(center_width, gap, L_sheet, eps, l=100):

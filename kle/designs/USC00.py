@@ -162,23 +162,52 @@ print("=== PL END ===")
 
 # === START RESONATORS ===
 def get_resonator_path(w, N, gap, arm_len, end_len=15):
-    path = [(-gap -w, end_len), (-gap -w, 0), (0, 0), (arm_len, 0)]
+    path = [(-3-gap-w, end_len-3), (-gap -w, end_len-3), (-gap -w, 0), (0, 0), (arm_len, 0)]
     lp = path[-1]
     for i in range(N-1):
         dir = -1 if i%2 == 0 else 1
         path += [(lp[0], lp[1] + gap + w), (lp[0] + dir * arm_len, lp[1] + gap + w)]
         lp = path[-1]
 
-    path += [(-gap -w, lp[1]), (-gap -w, lp[1]-end_len)]
+    path += [(-gap -w, lp[1]), (-gap -w, lp[1]-end_len+3), (-gap-w-3, lp[1]-end_len+3)]
 
-    return path
-
-shape, length = get_routed_trace(layers["SC_FINE"], path=get_resonator_path(0.5, 16, 2.7, 29.86), width_start=0.5, width_end=0.5, radii=1)
-layout.add_element(shape)
+    return path, path[0], path[-1]
 
 
+def Kbrim(k):
+    return sp.ellipk((1-k**2)**0.5)
 
+def K(k):
+    return sp.ellipk(k)
+
+def fk(w, gap):
+    a = w/2
+    b = (w+gap)/2
+    return np.tan(a * np.pi/(4 * b))**2
+
+def get_interdigit_C(k, L, n):
+    return (L*(n-1)/1e6)*(K(k)/Kbrim(k)) * 0.5 * (EPS + 1) * 1e-3 / (18 * np.pi)
+
+
+
+# === RESONATOR 0 (left bottom) ===
+path0, start0, end0 = get_resonator_path(0.5, 16, 2.7, 29.86+0.5)
+shape, length = get_routed_trace(layers["SC_FINE"], path=path0, width_start=0.5, width_end=0.5, radii=1)
+shape.add_element(create_shape(layers["SC_FINE"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*start0).move(0, -1))
+shape.add_element(create_shape(layers["SC_FINE"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*end0).move(0, -1))
+
+PL_CO.add_element(create_shape(layers["SC"], [(0, 0), (300, 0), (300, 300), (0, 300)]).move(1900, 2581))
+layout.add_element(shape.move(2050, 2727))
+
+from kle.layout.resonator_elements import get_C
+filter_cap = get_interdigit_C(fk(5e-6, 5e-6), 70.5e-6, 15) * 2
+filter_ind = 10/6 * 3 * 100 * LSHEET
+print("filter cap:", filter_cap, "filter ind:", filter_ind)
+print("filter f", 1/(2e9*np.pi * (filter_cap * filter_ind)**0.5), "imp:", (filter_ind/filter_cap)**0.5)
+
+lineZ, linef = get_cpw_impedance(center_width=30, gap=2, L_sheet=0, eps=EPS, l=1000)
+print("line connections", lineZ, linef/(2*np.pi*1e9))
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/USC07_20260427.gds"
+    r"C:\Users\jyrgen\Documents\PhD\design\gds_files\USC07_20260427.gds"
 )
