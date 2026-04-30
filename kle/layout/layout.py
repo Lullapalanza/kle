@@ -235,9 +235,10 @@ class KleLayoutElement:
             se.move(-x, -y)
         return self
 
-    def add_element(self, subelement):
-        self.origin = self.origin or subelement.origin
-        subelement.update_origin(self.origin)
+    def add_element(self, subelement, update_origin=True):
+        if update_origin:
+            self.origin = self.origin or subelement.origin
+            subelement.update_origin(self.origin)
         self.subelements.append(subelement)
 
     def add_elements(self, subelements):

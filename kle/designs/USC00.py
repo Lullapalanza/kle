@@ -27,7 +27,7 @@ EPS = 11.7
 
 
 LAYER_NAMES = [
-    "MARKERS", "SC_FINE", "SC", "BORDER"
+    "MARKERS", "BORDER", "SC_FINE0", "SC_FINE1", "SC_FINE2", "SC_FINE3", "SC", "LARGE_AL"
 ]
 
 layout = KleLayout(6000, 6000, LAYER_NAMES)
@@ -86,14 +86,32 @@ def get_global_marker():
 
     return marker
 
-def get_small_marker():
+def get_wire_marker():
     marker = KleLayoutElement()
     arm = create_shape(layers["MARKERS"], [
-        (-10, -0.5), (-10, 0.5), (10, 0.5), (10, -0.5)
+        (-1, -0.1), (-1, 0.1), (1, 0.1), (1, -0.1)
     ])
     marker.add_element(arm.get_copy())
     marker.add_element(arm.get_copy().rotate_right())
     return marker
+
+
+def get_small_marker():
+    marker = KleLayoutElement()
+    arm = create_shape(layers["MARKERS"], [
+        (-10, -1), (-10, 1), (10, 1), (10, -1)
+    ])
+    marker.add_element(arm.get_copy())
+    marker.add_element(arm.get_copy().rotate_right())
+    return marker
+
+def get_wire_marker_square():
+    marker_square = KleLayoutElement()
+    marker_square.add_element(get_wire_marker().move(-5, -5))
+    marker_square.add_element(get_wire_marker().move(-5, 5))
+    marker_square.add_element(get_wire_marker().move(5, 5))
+    marker_square.add_element(get_wire_marker().move(5, -5))
+    return marker_square
 # === END MARKERS ===
 
 # === MAKE MARKERS ===
@@ -192,97 +210,243 @@ def get_interdigit_C(k, L, n):
 
 # === RESONATOR 0 (left bottom) ===
 path0, start0, end0 = get_resonator_path(0.5, 16, 2.7, 29.86+0.5)
-shape, length = get_routed_trace(layers["SC_FINE"], path=path0, width_start=0.5, width_end=0.5, radii=1)
-shape.add_element(create_shape(layers["SC_FINE"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*start0).move(0, -1))
-shape.add_element(create_shape(layers["SC_FINE"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*end0).move(0, -1))
+shape, length = get_routed_trace(layers["SC_FINE0"], path=path0, width_start=0.5, width_end=0.5, radii=1)
+shape.add_element(create_shape(layers["SC_FINE0"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*start0).move(0, -1))
+shape.add_element(create_shape(layers["SC_FINE0"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*end0).move(0, -1))
 
-PL_CO.add_element(create_shape(layers["SC"], [(0, 0), (300, 0), (300, 300), (0, 300)]).move(1900, 2581))
-layout.add_element(shape.move(2050, 2727))
+# Resonator 0
+PL_CO.add_element(create_shape(layers["SC"], [(0, 0), (300, 0), (300, 300), (0, 300)]).move(1900 + 300, 2581))
+layout.add_element(shape.move(2050 + 300, 2727+50))
+layout.add_element(get_wire_marker_square().move(2310+18, 2790+5))
+
+# Resonator 1
+PL_CO.add_element(create_shape(layers["SC"], [(0, 0), (300, 0), (300, 300), (0, 300)]).move(1900 + 20-300, 2581+538))
+path0, start0, end0 = get_resonator_path(0.5, 16, 2.7, 29.86+0.5+3.5)
+shape, length = get_routed_trace(layers["SC_FINE1"], path=path0, width_start=0.5, width_end=0.5, radii=1)
+shape.add_element(create_shape(layers["SC_FINE1"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*start0).move(0, -1))
+shape.add_element(create_shape(layers["SC_FINE1"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*end0).move(0, -1))
+layout.add_element(shape.flip_horizontally().move(2050 - 270, 2727+450))
+layout.add_element(get_wire_marker_square().move(2050 - 270+22, 2727+450+32))
 
 
-from kle.layout.resonator_elements import get_C
+# Resonator 2
+PL_CO.add_element(create_shape(layers["SC"], [(0, 0), (300, 0), (300, 300), (0, 300)]).move(1900 + 1900-300, 2581+538))
+path0, start0, end0 = get_resonator_path(0.35, 22, 1.221, 22.765-0.273, end_len=11.4)
+shape, length = get_routed_trace(layers["SC_FINE2"], path=path0, width_start=0.350, width_end=0.350, radii=0.5)
+shape.add_element(create_shape(layers["SC_FINE2"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*start0).move(0, -1))
+shape.add_element(create_shape(layers["SC_FINE2"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*end0).move(0, -1))
+layout.add_element(shape.move(4000+237, 2727+70))
+layout.add_element(get_wire_marker_square().move(4000+237+22-42.6, 2727+70+32-18.6))
 
-filter_cap = get_interdigit_C(fk(5e-6, 5e-6), 70.5e-6, 15) * 2
-filter_ind =  500 * LSHEET
 
-print("filter cap target:", filter_cap, "filter ind target:", filter_ind)
-print("filter f target", 1/(2e9*np.pi * (filter_cap * filter_ind)**0.5), "imp:", (filter_ind/filter_cap)**0.5)
-
-lineZ, linef = get_cpw_impedance(center_width=30, gap=2, L_sheet=0, eps=EPS, l=1000)
-print("line connections", lineZ, linef/(2*np.pi*1e9))
+# Resonator 3
+PL_CO.add_element(create_shape(layers["SC"], [(0, 0), (300, 0), (300, 300), (0, 300)]).move(1900 + 1900 + 280, 2581))
+path0, start0, end0 = get_resonator_path(0.35, 24, 1.221, 22.765-0.273+0.7, end_len=11.4)
+shape, length = get_routed_trace(layers["SC_FINE3"], path=path0, width_start=0.350, width_end=0.350, radii=0.5)
+shape.add_element(create_shape(layers["SC_FINE3"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*start0).move(0, -1))
+shape.add_element(create_shape(layers["SC_FINE3"], [(0, 0), (3.25, 0), (3.25, 2), (0, 2)]).move(*end0).move(0, -1))
+layout.add_element(shape.flip_horizontally().move(4000-350, 2727+450-10))
+layout.add_element(get_wire_marker_square().move(4000-350+20, 2727+450+12))
 
 
 # === gate/lead connection ===
+from kle.layout.resonator_elements import get_C
 
-line_connection = KleLayoutElement()
-bondpad_hole = create_shape(layers["SC"], [(0, 0), (0, 220+200+150), (220, 220+200+150), (220, 0)])
-bondpad = create_shape(layers["SC"], [(10, 10), (10, 210), (210, 210), (210, 10)])
-filter_ind_path = [(110, 210), (110, 240), (170, 240)]
-step_x, step_y = 120, 23
-for _ in range(3):
+def get_pad_filter_line(end_path=None, add_extra=False):
+    end_path = end_path or []
+    line_connection = KleLayoutElement()
+    
+    filter_cap = get_interdigit_C(fk(5e-6, 5e-6), 70.5e-6, 15) * 2
+    filter_ind =  500 * LSHEET
+
+    print("filter cap target:", filter_cap, "filter ind target:", filter_ind)
+    print("filter f target", 1/(2e9*np.pi * (filter_cap * filter_ind)**0.5), "imp:", (filter_ind/filter_cap)**0.5)
+
+    bondpad_hole = create_shape(layers["SC"], [(0, 0), (0, 220+200+150), (220, 220+200+150), (220, 0)])
+    
+    bondpad = create_shape(layers["SC"], [(10, 10), (10, 210), (210, 210), (210, 10)])
+    filter_ind_path = [(110, 210), (110, 240), (170, 240)]
+    step_x, step_y = 120, 23
+    for _ in range(3):
+        filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
+        filter_ind_path.append((filter_ind_path[-1][0]-step_x, filter_ind_path[-1][1]))
+        filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
+        filter_ind_path.append((filter_ind_path[-1][0]+step_x, filter_ind_path[-1][1]))
+
     filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
-    filter_ind_path.append((filter_ind_path[-1][0]-step_x, filter_ind_path[-1][1]))
-    filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
-    filter_ind_path.append((filter_ind_path[-1][0]+step_x, filter_ind_path[-1][1]))
+    filter_ind_path.append((filter_ind_path[-1][0]-step_x/2, filter_ind_path[-1][1]))
+    filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y-4+10))
 
-filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y))
-filter_ind_path.append((filter_ind_path[-1][0]-step_x/2, filter_ind_path[-1][1]))
-filter_ind_path.append((filter_ind_path[-1][0], filter_ind_path[-1][1] + step_y-4))
+    filter_inductance, filter_ind_len = get_routed_trace(layers["SC"], filter_ind_path, width_start=2, width_end=2, radii=5)
+    print("filter inductance len", filter_ind_len, LSHEET * filter_ind_len/2)
 
-filter_inductance, filter_ind_len = get_routed_trace(layers["SC"], filter_ind_path, width_start=2, width_end=2, radii=5)
-print("filter inductance len", filter_ind_len, LSHEET * filter_ind_len/2)
+    # cap
+    interdigit_cap = KleLayoutElement()
+    N_finger, W, G, L = 15, 5, 5, 70
+    for n in range(N_finger):
+        interdigit_cap.add_element(
+            create_shape(layers["LARGE_AL"], [
+                [0, 0],
+                [W, 0],
+                [W, L],
+                [0, L]
+            ]).move(n * (W + G), (n%2)*G)
+        )
+    end_conn = create_shape(layers["LARGE_AL"], [
+        [-0, 0],
+        [-0, -W],
+        [(W + G) * N_finger - G, -W],
+        [(W + G) * N_finger - G, 0]
+    ])
+    interdigit_cap.add_element(end_conn)
+    interdigit_cap.add_element(end_conn.get_copy().move(0, L + G + W))
 
-# cap
-interdigit_cap = KleLayoutElement()
-N_finger, W, G, L = 15, 5, 5, 70
-for n in range(N_finger):
-    interdigit_cap.add_element(
-        create_shape(layers["SC"], [
-            [0, 0],
-            [W, 0],
-            [W, L],
-            [0, L]
-        ]).move(n * (W + G), (n%2)*G)
+    # ===
+    interdigit_cap.rotate_right()
+
+
+    other_side = interdigit_cap.get_copy()
+    other_side.flip_horizontally().move(-2*W, 0)
+
+
+    layout.add_element(bondpad)
+    layout.add_element(filter_inductance)
+
+
+    
+    PL_CO.add_element(bondpad_hole, update_origin=False)
+    line_connection.add_element(bondpad_hole)
+    line_connection.add_element(bondpad)
+    line_connection.add_element(filter_inductance)
+    line_connection.add_element(interdigit_cap.move(115, 420+145))
+    line_connection.add_element(other_side.move(115, 420+145))
+
+    interdigit_cap.add_element(create_shape(layers["LARGE_AL"], [(25, 420), (-10, 420), (-10, 420 + 150), (25, 420+150)]))
+    other_side.add_element(create_shape(layers["LARGE_AL"], [(35, 420), (0, 420), (0, 420 + 150), (35, 420+150)]).move(195, 0))
+    filter_endpoint = create_ref(110, 570)
+    line_connection.add_element(filter_endpoint)
+
+
+    line_start_x, line_start_y = filter_endpoint.get_absolute_points()[0]
+    line_path = [
+        (line_start_x, line_start_y),
+        (line_start_x, line_start_y + 200),
+        (line_start_x, line_start_y + 400) 
+    ]
+    line_path.extend([(ep[0] + line_path[-1][0], ep[1] + line_path[-1][1]) for ep in end_path])
+    line_elem, line_len = get_routed_trace(layers["SC"], path=line_path, width_end=34, width_start=34, radii=60)
+    line_elem_al, _ = get_routed_trace(layers["LARGE_AL"], path=line_path, width_end=26, width_start=26, radii=60)
+
+    PL_CO.add_element(line_elem)
+    line_connection.add_element(line_elem)
+    line_connection.add_element(line_elem_al)
+
+    lineZ, linef = get_cpw_impedance(center_width=26, gap=4, L_sheet=0, eps=EPS, l=line_len)
+    print("line connections", lineZ, linef/(2*np.pi*1e9))
+
+    layout.add_element(line_elem_al)
+
+    layout.add_element(interdigit_cap)
+    layout.add_element(other_side)
+
+    if add_extra is True:
+        x0, y0 = line_path[-1][0], line_path[-1][1]
+        shape = create_shape(layers["SC"], [(x0 - 10, y0 - 10), (x0 - 10, y0 + 10), (x0 + 10, y0 + 10), (x0 + 10, y0 - 10)])
+        layout.add_element(shape)
+        line_connection.add_element(shape)
+
+    return line_connection
+
+
+def make_lines():
+    lines_0 = KleLayoutElement()
+    lines_0.add_element(
+        get_pad_filter_line(end_path=[(0, 200), (400, 550), (500, 550), (590 + 300, 550)], add_extra=True).move(1200, 1200)
     )
-end_conn = create_shape(layers["SC"], [
-    [-0, 0],
-    [-0, -W],
-    [(W + G) * N_finger - G, -W],
-    [(W + G) * N_finger - G, 0]
-])
-interdigit_cap.add_element(end_conn)
-interdigit_cap.add_element(end_conn.get_copy().move(0, L + G + W))
+    lines_0.add_element(
+        get_pad_filter_line(end_path=[(0, 200), (150 + 150, 500), (450, 500), (290 + 300, 500)]).move(1200 + 1 * 300, 1200)
+    )
+    lines_0.add_element(
+        get_pad_filter_line(end_path=[(0, 300), (100, 450), (120, 450), (290, 450)]).move(1200 + 2 * 300, 1200)
+    )
+    lines_0.add_element(
+        get_pad_filter_line(end_path=[(-250+300, 250), (-250+300, 350), (-250+300, 411)]).move(1200 + 3 * 300, 1200)
+    )
+    lines_0.add_element(
+        get_pad_filter_line(end_path=[(-500+300, 300), (-500+300, 380), (-500+300, 411)]).move(1200 + 4 * 300, 1200)
+    )
+    lines_0.add_element(
+        get_pad_filter_line(end_path=[(0, 121), (-750+300, 340), (-750+300, 380), (-750+300, 411)], add_extra=True).move(1200 + 5 * 300, 1200)
+    )
+    return lines_0
 
-# ===
-interdigit_cap.rotate_right()
+# 0
+make_lines()
 
+# 3
+make_lines().move(2000-120, 0)
 
-other_side = interdigit_cap.get_copy()
-other_side.flip_horizontally().move(-2*W, 0)
+# 1
+from kle.layout.layout import KleElementOrigin
+make_lines().move(2000-120, 0).update_origin(new_origin=KleElementOrigin(3000, 3000)).flip_vertically().flip_horizontally()
 
-
-layout.add_element(bondpad)
-layout.add_element(filter_inductance)
-
-
-line_connection.add_element(bondpad_hole)
-line_connection.add_element(bondpad)
-line_connection.add_element(filter_inductance)
-line_connection.add_element(interdigit_cap.move(115, 420+145))
-line_connection.add_element(other_side.move(115, 420+145))
-
-interdigit_cap.add_element(create_shape(layers["SC"], [(25, 420), (0, 420), (0, 420 + 150), (25, 420+150)]))
-other_side.add_element(create_shape(layers["SC"], [(25, 420), (0, 420), (0, 420 + 150), (25, 420+150)]).move(195, 0))
-line_connection.move(1000, 1000)
-
-PL_CO.add_element(bondpad_hole)
-
-layout.add_element(interdigit_cap)
-layout.add_element(other_side)
+# 2
+make_lines().update_origin(new_origin=KleElementOrigin(3000, 3000)).flip_vertically().flip_horizontally()
 
 
-# ===
+
+# === LOCAL MARKERS ===
+# 0
+marker_positions = [
+    (2180, 2820), (2520, 2820), (2180, 2580), (2520, 2580),
+    (2180-30, 2820-30), (2520+30, 2820-30), (2180-30, 2580-30), (2520+30, 2580-30),
+    (2180-60, 2820-00), (2520+60, 2820-00), (2180-60, 2580-00), (2520+60, 2580-00),
+    (2180-90, 2820-30), (2520+90, 2820-30), (2180-90, 2580-30), (2520+90, 2580-30),
+]
+m0, m1 = 0, 0
+for m in marker_positions:
+    layout.add_element(get_small_marker().move(m[0]+m0, m[1]+m1))
+
+
+
+# 1
+marker_positions = [
+    (2180, 2820), (2520, 2820), (2180, 2580), (2520, 2580),
+    (2180-30, 2820-30), (2520+30, 2820-30), (2180-30, 2580-30), (2520+30, 2580-30),
+    (2180-60, 2820-00), (2520+60, 2820-00), (2180-60, 2580-00), (2520+60, 2580-00),
+    (2180-90, 2820-30), (2520+90, 2820-30), (2180-90, 2580-30), (2520+90, 2580-30),
+]
+m0, m1 = -580, 630
+for m in marker_positions:
+    layout.add_element(get_small_marker().move(m[0]+m0, m[1]+m1))
+
+
+
+# 2
+marker_positions = [
+    (2180, 2820), (2520, 2820), (2180, 2580), (2520, 2580),
+    (2180-30, 2820-30), (2520+30, 2820-30), (2180-30, 2580-30), (2520+30, 2580-30),
+    (2180-60, 2820-00), (2520+60, 2820-00), (2180-60, 2580-00), (2520+60, 2580-00),
+    (2180-90, 2820-30), (2520+90, 2820-30), (2180-90, 2580-30), (2520+90, 2580-30),
+]
+m0, m1 = 1880, 0
+for m in marker_positions:
+    layout.add_element(get_small_marker().move(m[0]+m0, m[1]+m1))
+
+
+# 3
+marker_positions = [
+    (2180, 2820), (2520, 2820), (2180, 2580), (2520, 2580),
+    (2180-30, 2820-30), (2520+30, 2820-30), (2180-30, 2580-30), (2520+30, 2580-30),
+    (2180-60, 2820-00), (2520+60, 2820-00), (2180-60, 2580-00), (2520+60, 2580-00),
+    (2180-90, 2820-30), (2520+90, 2820-30), (2180-90, 2580-30), (2520+90, 2580-30),
+]
+m0, m1 = -580+1880, 630
+for m in marker_positions:
+    layout.add_element(get_small_marker().move(m[0]+m0, m[1]+m1))
+# ====
+
 
 layout.build_to_file(
-    r"/home/jyrgen/Documents/PhD/design_files/USC07_20260427.gds"
+    r"/home/jyrgen/Documents/PhD/design_files/USC07_20260427.dxf"
 )
